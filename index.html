@@ -1,0 +1,1084 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>梦幻西游 · 怀旧版</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; user-select:none; }
+  html,body { height:100%; background:#1a1208; display:flex; align-items:center; justify-content:center;
+    font-family:"KaiTi","STKaiti","楷体","SimSun",serif; }
+  #stage { position:relative; width:960px; height:600px; overflow:hidden; border:4px solid #6b4a1f;
+    border-radius:10px; box-shadow:0 0 40px rgba(0,0,0,.8), inset 0 0 8px rgba(0,0,0,.5); background:#e8d5a3; }
+
+  .screen { position:absolute; inset:0; display:none; }
+  .screen.active { display:block; }
+
+  button { font-family:inherit; cursor:pointer; }
+  .mh-btn { background:linear-gradient(#f5e3b0,#d9b56d); border:2px solid #8b5a2b; border-radius:8px;
+    padding:6px 18px; font-size:17px; color:#5a3410; box-shadow:0 2px 0 #8b5a2b, inset 0 1px 0 #fff8; }
+  .mh-btn:hover { filter:brightness(1.08); }
+  .mh-btn:active { transform:translateY(2px); box-shadow:0 0 0 #8b5a2b; }
+  .mh-btn:disabled { opacity:.45; cursor:default; }
+
+  /* ---------- 标题画面 ---------- */
+  #screen-title { background:linear-gradient(#f7e9c4 0%, #eed79e 55%, #d9b877 100%); text-align:center; }
+  .cloud { position:absolute; font-size:42px; opacity:.7; animation:drift 30s linear infinite; }
+  @keyframes drift { from { transform:translateX(-120px);} to { transform:translateX(1080px);} }
+  #logo { margin-top:120px; font-size:96px; letter-spacing:14px; color:#8b2f10;
+    text-shadow:3px 3px 0 #f7e9c4, 6px 6px 0 #b8863b, 0 0 26px rgba(139,47,16,.35); font-weight:bold; }
+  #logo-sub { font-size:24px; letter-spacing:20px; color:#6b4a1f; margin-top:8px; }
+  #title-btns { margin-top:60px; display:flex; gap:30px; justify-content:center; }
+  #title-btns .mh-btn { font-size:22px; padding:10px 34px; }
+  #title-tip { position:absolute; bottom:22px; width:100%; color:#8a6a3a; font-size:15px; letter-spacing:2px; }
+
+  /* ---------- 选人 ---------- */
+  #screen-select { background:linear-gradient(#f2e2b6,#e0c184); text-align:center; padding-top:34px; }
+  #screen-select h2 { color:#7a3b12; font-size:34px; letter-spacing:8px; }
+  #class-cards { display:flex; gap:26px; justify-content:center; margin-top:30px; }
+  .card { width:240px; background:#fdf3d7; border:3px solid #a9803f; border-radius:12px; padding:16px 12px;
+    cursor:pointer; transition:transform .15s, box-shadow .15s; }
+  .card:hover { transform:translateY(-6px); }
+  .card.sel { border-color:#c23a10; box-shadow:0 0 18px rgba(194,58,16,.55); transform:translateY(-6px); }
+  .card .face { font-size:74px; }
+  .card h3 { font-size:24px; color:#5a3410; margin:6px 0 2px; }
+  .card .school { color:#a04010; font-size:16px; }
+  .card .desc { font-size:14px; color:#7a6237; margin-top:8px; line-height:1.5; min-height:64px; }
+  .card .stats { font-size:13px; color:#5a3410; margin-top:6px; text-align:left; padding:0 10px; }
+  #name-row { margin-top:34px; font-size:20px; color:#5a3410; }
+  #inp-name { font-family:inherit; font-size:19px; padding:5px 10px; border:2px solid #a9803f; border-radius:6px;
+    background:#fffbe9; width:180px; color:#5a3410; }
+
+  /* ---------- 地图 ---------- */
+  #screen-map { display:none; flex-direction:column; }
+  #screen-map.active { display:flex; }
+  #hud { height:74px; background:linear-gradient(#f5e6bd,#e2c583); border-bottom:3px solid #8b5a2b;
+    display:flex; align-items:center; padding:0 12px; gap:12px; z-index:5; }
+  #hud-avatar { width:54px; height:54px; background:#fdf3d7; border:2px solid #8b5a2b; border-radius:50%;
+    font-size:34px; display:flex; align-items:center; justify-content:center; }
+  #hud-info { width:210px; }
+  #hud-name { font-size:16px; color:#5a3410; font-weight:bold; }
+  .bar { height:10px; background:#7a6237; border:1px solid #4a3410; border-radius:5px; overflow:hidden; margin-top:3px; }
+  .bar-fill { height:100%; transition:width .3s; }
+  #hud-hp-fill { background:linear-gradient(#ff8a6a,#d92a10); }
+  #hud-mp-fill { background:linear-gradient(#7ab8ff,#1a5ad9); }
+  #hud-exp-fill { background:linear-gradient(#ffe27a,#e0a010); }
+  #hud-money { font-size:16px; color:#7a3b12; min-width:110px; }
+  #hud-scene { font-size:20px; color:#8b2f10; letter-spacing:3px; flex:1; text-align:center; }
+  #hud-btns { display:flex; gap:8px; }
+  #hud-btns .mh-btn { font-size:15px; padding:5px 12px; }
+
+  #map-area { position:relative; flex:1; overflow:hidden; cursor:crosshair; }
+  #map-area.changan { background:
+    radial-gradient(ellipse 700px 200px at 50% 108%, #caa15e 0%, transparent 70%),
+    linear-gradient(#f9ecc6 0%, #efd9a0 45%, #dcba79 100%); }
+  #map-area.jiaowai { background:
+    radial-gradient(ellipse 700px 220px at 50% 110%, #7a9a4a 0%, transparent 70%),
+    linear-gradient(#cfe3b0 0%, #b6d18a 45%, #93b45e 100%); }
+  .decor { position:absolute; transform:translate(-50%,-100%); pointer-events:none; }
+  .npc, .exit { position:absolute; transform:translate(-50%,-100%); text-align:center; cursor:pointer; z-index:3; }
+  .npc .emoji { font-size:44px; display:block; filter:drop-shadow(0 3px 2px rgba(0,0,0,.3)); }
+  .npc .tag, .exit .tag { display:inline-block; font-size:13px; color:#fffbe9; background:rgba(90,52,16,.85);
+    border-radius:6px; padding:1px 8px; margin-top:2px; white-space:nowrap; }
+  .npc:hover .emoji { transform:scale(1.15); }
+  .exit .emoji { font-size:36px; display:block; animation:bounce 1.2s ease-in-out infinite; }
+  @keyframes bounce { 0%,100%{transform:translateY(0);} 50%{transform:translateY(-8px);} }
+  #player-sprite { position:absolute; transform:translate(-50%,-100%); text-align:center; z-index:4; pointer-events:none; }
+  #player-sprite .emoji { font-size:48px; display:block; filter:drop-shadow(0 4px 3px rgba(0,0,0,.35)); }
+  #player-sprite .tag { font-size:13px; color:#fff; text-shadow:0 0 4px #000, 0 0 4px #000; }
+  #player-sprite.walking .emoji { animation:walkbob .3s ease-in-out infinite; }
+  @keyframes walkbob { 0%,100%{transform:translateY(0);} 50%{transform:translateY(-5px);} }
+
+  #log { position:absolute; left:8px; bottom:8px; width:520px; height:108px; overflow-y:auto; z-index:5;
+    background:rgba(30,20,8,.72); border:2px solid #8b5a2b; border-radius:8px; padding:6px 10px;
+    font-size:14px; line-height:1.55; color:#f0e2bb; pointer-events:auto; }
+  #log .sys { color:#ffd76a; }
+  #log .world { color:#7ecbff; }
+  #log .battle { color:#ff9a7a; }
+
+  /* ---------- 战斗 ---------- */
+  #screen-battle { background:linear-gradient(#bfe0ef 0%, #dbe9c8 46%, #96b862 47%, #6f9440 100%); }
+  #battle-field { position:absolute; inset:0 0 150px 0; }
+  .bf-decor { position:absolute; pointer-events:none; opacity:.85; }
+  .sprite { position:absolute; width:110px; text-align:center; transform:translate(-50%,-100%); transition:transform .25s; }
+  .sprite .emoji { font-size:52px; display:block; filter:drop-shadow(0 5px 4px rgba(0,0,0,.35)); }
+  .sprite.enemy .emoji { transform:scaleX(-1); display:block; }
+  .sprite .sp-name { font-size:14px; color:#fff; text-shadow:0 0 4px #000,0 0 4px #000; }
+  .sprite .sp-hp { width:70px; height:7px; margin:2px auto 0; background:#333; border:1px solid #000;
+    border-radius:4px; overflow:hidden; }
+  .sprite .sp-hp i { display:block; height:100%; background:linear-gradient(#8ae06a,#2a9a10); transition:width .3s; }
+  .sprite.dead { opacity:.25; filter:grayscale(1); }
+  .sprite.targetable { cursor:pointer; }
+  .sprite.targetable::after { content:"▼"; position:absolute; top:-26px; left:50%; transform:translateX(-50%);
+    color:#ff3a10; font-size:20px; animation:bounce .7s infinite; text-shadow:0 0 4px #fff; }
+  .sprite.acting { z-index:9; }
+  .dmgpop { position:absolute; transform:translate(-50%,-100%); font-size:26px; font-weight:bold; color:#ff4a2a;
+    text-shadow:2px 2px 0 #fff, 0 0 6px #000; z-index:10; animation:floatup .9s ease-out forwards; pointer-events:none; }
+  .dmgpop.heal { color:#3ad94a; }
+  .dmgpop.info { color:#ffd76a; font-size:20px; }
+  @keyframes floatup { 0%{opacity:1; margin-top:0;} 100%{opacity:0; margin-top:-52px;} }
+  @keyframes shake { 0%,100%{margin-left:0;} 25%{margin-left:-7px;} 75%{margin-left:7px;} }
+  .sprite.hit .emoji { animation:shake .25s; }
+
+  #battle-bottom { position:absolute; left:0; right:0; bottom:0; height:150px; display:flex;
+    background:linear-gradient(#f5e6bd,#dfc07c); border-top:3px solid #8b5a2b; }
+  #battle-log { flex:1; padding:8px 14px; font-size:15px; color:#5a3410; overflow-y:auto; line-height:1.6; }
+  #battle-menu { width:330px; border-left:2px solid #b8935a; padding:10px; display:flex; flex-wrap:wrap;
+    gap:8px; align-content:flex-start; }
+  #battle-menu .mh-btn { font-size:16px; padding:6px 0; width:96px; text-align:center; }
+  #battle-menu .menu-tip { width:100%; font-size:14px; color:#a04010; }
+
+  #battle-result { position:absolute; inset:0; display:none; align-items:center; justify-content:center;
+    background:rgba(20,12,4,.55); z-index:20; }
+  #battle-result.show { display:flex; }
+  #result-box { background:#fdf3d7; border:3px solid #8b5a2b; border-radius:14px; padding:26px 44px;
+    text-align:center; box-shadow:0 0 30px rgba(0,0,0,.6); }
+  #result-box h2 { color:#c23a10; font-size:32px; letter-spacing:6px; }
+  #result-box .lines { margin:14px 0 18px; font-size:17px; color:#5a3410; line-height:1.9; }
+
+  /* ---------- 弹窗 ---------- */
+  #modal { position:absolute; inset:0; background:rgba(20,12,4,.5); display:none;
+    align-items:center; justify-content:center; z-index:30; }
+  #modal.show { display:flex; }
+  #modal-box { width:430px; max-height:470px; background:#fdf3d7; border:3px solid #8b5a2b; border-radius:14px;
+    padding:16px 20px; box-shadow:0 0 30px rgba(0,0,0,.6); display:flex; flex-direction:column; }
+  #modal-title { font-size:22px; color:#8b2f10; text-align:center; letter-spacing:4px; border-bottom:2px solid #d9b56d;
+    padding-bottom:8px; }
+  #modal-body { flex:1; overflow-y:auto; padding:12px 2px; font-size:16px; color:#5a3410; line-height:1.7; }
+  #modal-body .row { display:flex; align-items:center; justify-content:space-between; padding:6px 4px;
+    border-bottom:1px dashed #d9b56d; gap:8px; }
+  #modal-body .row .mh-btn { font-size:14px; padding:3px 12px; }
+  #modal-close { align-self:center; margin-top:10px; }
+
+  #flash { position:absolute; inset:0; background:#fff; opacity:0; pointer-events:none; z-index:40; }
+  #flash.go { animation:flashanim .55s ease-out; }
+  @keyframes flashanim { 0%{opacity:0;} 30%{opacity:1;} 100%{opacity:0;} }
+
+  #btn-bgm { position:absolute; top:8px; right:8px; z-index:50; width:38px; height:38px; border-radius:50%;
+    border:2px solid #8b5a2b; background:#f5e3b0; font-size:18px; }
+</style>
+</head>
+<body>
+<div id="stage">
+
+  <!-- 标题 -->
+  <div id="screen-title" class="screen active">
+    <div class="cloud" style="top:60px; animation-delay:-4s">☁️</div>
+    <div class="cloud" style="top:150px; animation-delay:-14s">☁️</div>
+    <div class="cloud" style="top:320px; animation-delay:-22s; font-size:60px">☁️</div>
+    <div id="logo">梦幻西游</div>
+    <div id="logo-sub">· 怀 旧 版 ·</div>
+    <div id="title-btns">
+      <button class="mh-btn" id="btn-new">开始新的旅程</button>
+      <button class="mh-btn" id="btn-continue">继续游戏</button>
+    </div>
+    <div id="title-tip">谨以此页，献给在长安城里度过的那些年</div>
+  </div>
+
+  <!-- 选人 -->
+  <div id="screen-select" class="screen">
+    <h2>—— 创建角色 ——</h2>
+    <div id="class-cards"></div>
+    <div id="name-row">
+      侠名：<input id="inp-name" maxlength="8" placeholder="起个响亮的名字">
+      <button class="mh-btn" id="btn-create">进入长安</button>
+    </div>
+  </div>
+
+  <!-- 地图 -->
+  <div id="screen-map" class="screen">
+    <div id="hud">
+      <div id="hud-avatar">🤺</div>
+      <div id="hud-info">
+        <div id="hud-name">侠客 Lv.1</div>
+        <div class="bar"><div class="bar-fill" id="hud-hp-fill"></div></div>
+        <div class="bar"><div class="bar-fill" id="hud-mp-fill"></div></div>
+        <div class="bar" style="height:6px"><div class="bar-fill" id="hud-exp-fill"></div></div>
+      </div>
+      <div id="hud-money">💰 0 两</div>
+      <div id="hud-scene">长安城</div>
+      <div id="hud-btns">
+        <button class="mh-btn" id="btn-bag">背包</button>
+        <button class="mh-btn" id="btn-pet">召唤兽</button>
+        <button class="mh-btn" id="btn-save">保存</button>
+      </div>
+    </div>
+    <div id="map-area"></div>
+    <div id="log"></div>
+  </div>
+
+  <!-- 战斗 -->
+  <div id="screen-battle" class="screen">
+    <div id="battle-field"></div>
+    <div id="battle-bottom">
+      <div id="battle-log"></div>
+      <div id="battle-menu"></div>
+    </div>
+    <div id="battle-result">
+      <div id="result-box">
+        <h2>战斗胜利</h2>
+        <div class="lines"></div>
+        <button class="mh-btn" id="btn-result-ok">确定</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 通用弹窗 -->
+  <div id="modal">
+    <div id="modal-box">
+      <div id="modal-title"></div>
+      <div id="modal-body"></div>
+      <button class="mh-btn" id="modal-close">关 闭</button>
+    </div>
+  </div>
+
+  <div id="flash"></div>
+  <button id="btn-bgm" title="背景音乐">🔇</button>
+</div>
+
+<script>
+"use strict";
+const $ = s => document.querySelector(s);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const rnd = (a,b) => a + Math.random()*(b-a);
+const ri = (a,b) => Math.floor(rnd(a,b+1));
+const clamp = (v,a,b) => Math.max(a, Math.min(b,v));
+
+/* ==================== 数据 ==================== */
+const CLASSES = {
+  jxk: { name:'剑侠客', school:'大唐官府', emoji:'🤺',
+    desc:'挥剑决浮云，一剑霜寒十四州。物理输出，简单粗暴。',
+    base:{hp:130,mp:45,atk:24,mag:8,def:13,spd:12},
+    grow:{hp:24,mp:6,atk:4.6,mag:1.2,def:2.6,spd:2.0},
+    skills:['hsqj'] },
+  xys: { name:'逍遥生', school:'龙宫', emoji:'🧙‍♂️',
+    desc:'家住东海龙宫，一手龙卷雨击席卷全场。法系群攻，清怪如麻。',
+    base:{hp:95,mp:85,atk:13,mag:26,def:10,spd:14},
+    grow:{hp:18,mp:12,atk:2.0,mag:4.8,def:2.0,spd:2.2},
+    skills:['ljyj','erlong'] },
+  xce: { name:'玄彩娥', school:'普陀山', emoji:'🧚‍♀️',
+    desc:'落伽山下好修行，能打能奶。灵动九天伤敌，推气过宫救人。',
+    base:{hp:105,mp:75,atk:15,mag:20,def:11,spd:16},
+    grow:{hp:20,mp:10,atk:2.6,mag:4.0,def:2.2,spd:2.6},
+    skills:['ldjt','tqgg'] },
+};
+const SKILLS = {
+  hsqj:  { name:'横扫千军', mp:20, type:'phys', mult:1.15, aoe:true,  desc:'挥剑横扫，攻击所有敌人' },
+  ljyj:  { name:'龙卷雨击', mp:25, type:'mag',  mult:1.35, aoe:true,  desc:'呼风唤雨，法术攻击所有敌人' },
+  erlong:{ name:'二龙戏珠', mp:15, type:'mag',  mult:2.1,  aoe:false, desc:'对单个敌人造成高额法术伤害' },
+  ldjt:  { name:'灵动九天', mp:15, type:'mag',  mult:2.0,  aoe:false, desc:'对单个敌人造成法术伤害' },
+  tqgg:  { name:'推气过宫', mp:20, type:'heal', mult:3.2,  aoe:false, desc:'为一名队友恢复气血' },
+};
+const MONSTERS = {
+  haimaochong:{ name:'海毛虫', emoji:'🐛', hp:58,  atk:14, def:6,  spd:8,  exp:14, money:12, catch:true },
+  juwa:       { name:'巨蛙',   emoji:'🐸', hp:76,  atk:17, def:8,  spd:11, exp:18, money:15, catch:true },
+  dahaigui:   { name:'大海龟', emoji:'🐢', hp:112, atk:18, def:15, spd:6,  exp:24, money:20, catch:true },
+  xiejiang:   { name:'蟹将',   emoji:'🦀', hp:88,  atk:21, def:12, spd:9,  exp:22, money:18, catch:true },
+  shuguai:    { name:'树怪',   emoji:'🌳', hp:100, atk:20, def:10, spd:7,  exp:23, money:17, catch:true },
+  qiangdao:   { name:'强盗',   emoji:'🥷', hp:95,  atk:24, def:9,  spd:13, exp:28, money:45, catch:false },
+};
+const ITEMS = {
+  baozi:     { name:'包子',   emoji:'🥟', price:20, heal:{hp:60},  desc:'恢复60点气血' },
+  jinchuang: { name:'金创药', emoji:'🧪', price:50, heal:{hp:160}, desc:'恢复160点气血' },
+  dingshen:  { name:'定神香', emoji:'🕯️', price:40, heal:{mp:60},  desc:'恢复60点魔法' },
+};
+const SCENES = {
+  changan: { name:'长安城', wild:false, cls:'changan',
+    decor:[ {e:'🏯',x:15,y:28,s:80}, {e:'🏘️',x:38,y:24,s:56}, {e:'🏮',x:26,y:36,s:30}, {e:'🏮',x:52,y:30,s:30},
+            {e:'🌸',x:66,y:26,s:40}, {e:'🏘️',x:80,y:30,s:56}, {e:'🌳',x:6,y:52,s:44}, {e:'⛲',x:60,y:48,s:44} ],
+    npcs:[ {id:'yao',  name:'药店老板', emoji:'👴', x:24, y:58},
+           {id:'inn',  name:'客栈老板娘', emoji:'👩', x:48, y:46},
+           {id:'bing', name:'守城老兵', emoji:'💂', x:72, y:62} ],
+    exits:[ {name:'建邺城郊外', emoji:'🚩', x:90, y:74, to:'jiaowai', px:12, py:70} ] },
+  jiaowai: { name:'建邺城郊外', wild:false /* 实际下面置 true */, cls:'jiaowai',
+    decor:[ {e:'🌲',x:14,y:30,s:56}, {e:'🌲',x:30,y:24,s:48}, {e:'🌾',x:55,y:34,s:36}, {e:'🌲',x:78,y:26,s:56},
+            {e:'🪨',x:44,y:56,s:34}, {e:'🍄',x:66,y:62,s:26}, {e:'🌾',x:22,y:70,s:36}, {e:'🌲',x:90,y:44,s:48} ],
+    npcs:[],
+    exits:[ {name:'回长安城', emoji:'🚩', x:8, y:74, to:'changan', px:82, py:70} ] },
+};
+SCENES.jiaowai.wild = true;
+const WORLD_CHAT = [
+  '【世界】风花雪月夜：收一只高资质大海龟，价格好商量~',
+  '【世界】长安一片月：来个普陀妹妹带我抓鬼呀',
+  '【世界】大唐第一剑：卖强化金创药，便宜出，摊位在西市！',
+  '【世界】水冰月：师门任务谁一起？就差一个人了',
+  '【世界】逍遥小散人：刚抓的巨蛙居然是满技能！发了发了',
+  '【世界】桃花岛少主：帮派招人，有食堂有书院，老板娘人美心善',
+  '【世界】咸鱼翻身：有人组队刷建邺郊外吗，练级抓宠两不误',
+];
+
+/* ==================== 存档与状态 ==================== */
+const SAVE_KEY = 'mhxy_huaijiu_save_v1';
+let S = null;            // 玩家存档
+let inBattle = false;
+
+function classStats(cls, lv){
+  const c = CLASSES[cls], g = c.grow, b = c.base, n = lv-1;
+  return { maxHp:Math.round(b.hp+g.hp*n), maxMp:Math.round(b.mp+g.mp*n),
+           atk:Math.round(b.atk+g.atk*n), mag:Math.round(b.mag+g.mag*n),
+           def:Math.round(b.def+g.def*n), spd:Math.round(b.spd+g.spd*n) };
+}
+function expNeed(lv){ return lv*120; }
+function petStats(mid, lv){
+  const m = MONSTERS[mid], f = 1+(lv-1)*0.3;
+  return { maxHp:Math.round(m.hp*0.95*f), atk:Math.round(m.atk*1.05*f),
+           def:Math.round(m.def*f), spd:Math.round(m.spd*f) };
+}
+function petExpNeed(lv){ return lv*100; }
+
+function newGame(cls, name){
+  const st = classStats(cls,1);
+  S = { cls, name, lv:1, exp:0, money:300,
+        hp:st.maxHp, mp:st.maxMp, ...st,
+        items:{ baozi:3, jinchuang:1, dingshen:1 },
+        pet:null, scene:'changan', px:30, py:72 };
+}
+function save(){ if(S) localStorage.setItem(SAVE_KEY, JSON.stringify(S)); }
+function load(){
+  try { const d = JSON.parse(localStorage.getItem(SAVE_KEY)); return d && d.cls ? d : null; }
+  catch(e){ return null; }
+}
+
+/* ==================== 通用 UI ==================== */
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(el=>el.classList.remove('active'));
+  $(id).classList.add('active');
+}
+function log(msg, cls='sys'){
+  const el = $('#log'); const p = document.createElement('div');
+  p.className = cls; p.textContent = msg; el.appendChild(p);
+  while(el.children.length>40) el.removeChild(el.firstChild);
+  el.scrollTop = el.scrollHeight;
+}
+function openModal(title, bodyHTML){
+  $('#modal-title').textContent = title;
+  $('#modal-body').innerHTML = bodyHTML;
+  $('#modal').classList.add('show');
+}
+function closeModal(){ $('#modal').classList.remove('show'); }
+$('#modal-close').onclick = closeModal;
+
+function updateHUD(){
+  if(!S) return;
+  $('#hud-avatar').textContent = CLASSES[S.cls].emoji;
+  $('#hud-name').textContent = `${S.name} · ${CLASSES[S.cls].name} Lv.${S.lv}`;
+  $('#hud-hp-fill').style.width = (100*S.hp/S.maxHp)+'%';
+  $('#hud-mp-fill').style.width = (100*S.mp/S.maxMp)+'%';
+  $('#hud-exp-fill').style.width = (100*S.exp/expNeed(S.lv))+'%';
+  $('#hud-money').textContent = `💰 ${S.money} 两`;
+  $('#hud-scene').textContent = SCENES[S.scene].name;
+}
+
+/* ==================== 音效 / BGM ==================== */
+let AC = null, bgmOn = false, bgmTimer = null, bgmStep = 0;
+function ac(){ if(!AC) AC = new (window.AudioContext||window.webkitAudioContext)(); return AC; }
+function tone(freq, dur, type='triangle', vol=0.12, delay=0){
+  try{
+    const a = ac(), o = a.createOscillator(), g = a.createGain();
+    o.type = type; o.frequency.value = freq;
+    g.gain.setValueAtTime(vol, a.currentTime+delay);
+    g.gain.exponentialRampToValueAtTime(0.001, a.currentTime+delay+dur);
+    o.connect(g); g.connect(a.destination);
+    o.start(a.currentTime+delay); o.stop(a.currentTime+delay+dur+0.05);
+  }catch(e){}
+}
+const sfx = {
+  hit(){ tone(180,0.12,'square',0.1); tone(90,0.15,'sawtooth',0.08,0.02); },
+  magic(){ tone(660,0.1,'sine',0.1); tone(880,0.12,'sine',0.09,0.06); tone(1100,0.16,'sine',0.08,0.12); },
+  heal(){ tone(523,0.12,'sine',0.1); tone(659,0.14,'sine',0.1,0.1); tone(784,0.2,'sine',0.1,0.2); },
+  levelup(){ [523,659,784,1046].forEach((f,i)=>tone(f,0.22,'triangle',0.14,i*0.13)); },
+  catch(){ [784,988,1175].forEach((f,i)=>tone(f,0.16,'triangle',0.13,i*0.1)); },
+  flee(){ tone(400,0.1,'sine',0.1); tone(300,0.1,'sine',0.1,0.08); tone(200,0.14,'sine',0.1,0.16); },
+  encounter(){ tone(220,0.14,'sawtooth',0.12); tone(165,0.2,'sawtooth',0.12,0.1); },
+  click(){ tone(880,0.05,'sine',0.06); },
+};
+// 一段温柔的五声音阶小调，聊表长安城的月色
+const N = { C4:261.6, D4:293.7, E4:329.6, G4:392.0, A4:440.0, C5:523.3, D5:587.3, E5:659.3 };
+const BGM = [ [N.E4,1],[N.G4,1],[N.A4,1],[N.C5,2],[N.A4,1],[N.G4,1],[N.E4,2],
+              [N.D4,1],[N.E4,1],[N.G4,1],[N.E4,2],[N.D4,1],[N.C4,3],
+              [N.A4,1],[N.C5,1],[N.D5,1],[N.E5,2],[N.D5,1],[N.C5,1],[N.A4,2],
+              [N.G4,1],[N.A4,1],[N.C5,1],[N.A4,1],[N.G4,1],[N.E4,1],[N.D4,1],[N.C4,3] ];
+function bgmTick(){
+  const [f,beats] = BGM[bgmStep % BGM.length];
+  tone(f, beats*0.32, 'triangle', 0.07);
+  tone(f/2, beats*0.36, 'sine', 0.04);
+  bgmStep++;
+  bgmTimer = setTimeout(bgmTick, beats*300);
+}
+$('#btn-bgm').onclick = ()=>{
+  bgmOn = !bgmOn;
+  $('#btn-bgm').textContent = bgmOn ? '🔊' : '🔇';
+  if(bgmOn){ ac().resume && ac().resume(); bgmTick(); }
+  else { clearTimeout(bgmTimer); }
+};
+
+/* ==================== 选人 ==================== */
+let selCls = 'jxk';
+function renderSelect(){
+  const box = $('#class-cards'); box.innerHTML = '';
+  for(const [id,c] of Object.entries(CLASSES)){
+    const d = document.createElement('div');
+    d.className = 'card'+(id===selCls?' sel':'');
+    d.innerHTML = `<div class="face">${c.emoji}</div><h3>${c.name}</h3>
+      <div class="school">「${c.school}」</div><div class="desc">${c.desc}</div>
+      <div class="stats">气血 ${c.base.hp}　魔法 ${c.base.mp}<br>攻击 ${c.base.atk}　法力 ${c.base.mag}<br>防御 ${c.base.def}　速度 ${c.base.spd}</div>`;
+    d.onclick = ()=>{ selCls = id; sfx.click(); renderSelect(); };
+    box.appendChild(d);
+  }
+}
+$('#btn-new').onclick = ()=>{
+  if(load() && !confirm('已有存档，开始新游戏将覆盖旧存档，确定吗？')) return;
+  sfx.click(); renderSelect(); showScreen('#screen-select');
+};
+$('#btn-continue').onclick = ()=>{
+  const d = load(); if(!d) return;
+  S = d; sfx.click(); enterMap(S.scene, S.px, S.py);
+  log(`欢迎回来，${S.name}！江湖依旧，故人未散。`);
+};
+$('#btn-create').onclick = ()=>{
+  const name = $('#inp-name').value.trim() || '无名侠客';
+  newGame(selCls, name); save(); sfx.levelup();
+  enterMap('changan', 30, 72);
+  log(`欢迎来到长安城，${name}！`);
+  log('【提示】点击地面移动，点击 NPC 对话，走到红旗🚩处切换地图。', 'sys');
+  log('【提示】去建邺城郊外练级，别忘了在战斗中「捕捉」一只召唤兽！', 'sys');
+};
+
+/* ==================== 地图 ==================== */
+let pPos = {x:300, y:400};       // 玩家像素坐标
+let moveTarget = null, pendingAction = null, walkDistAcc = 0;
+let worldChatTimer = null;
+
+function pct2px(area, x, y){ return { x: area.clientWidth*x/100, y: area.clientHeight*y/100 }; }
+
+function enterMap(sceneId, px, py){
+  S.scene = sceneId;
+  const sc = SCENES[sceneId];
+  const area = $('#map-area');
+  area.className = sc.cls;
+  area.innerHTML = '';
+  showScreen('#screen-map');
+  // 装饰
+  sc.decor.forEach(d=>{
+    const el = document.createElement('div'); el.className='decor';
+    el.style.left = d.x+'%'; el.style.top = d.y+'%'; el.style.fontSize = d.s+'px';
+    el.textContent = d.e; area.appendChild(el);
+  });
+  // NPC
+  sc.npcs.forEach(n=>{
+    const el = document.createElement('div'); el.className='npc';
+    el.style.left = n.x+'%'; el.style.top = n.y+'%';
+    el.innerHTML = `<span class="emoji">${n.emoji}</span><span class="tag">${n.name}</span>`;
+    el.onclick = ev=>{ ev.stopPropagation(); walkThen(n.x, n.y, ()=>npcTalk(n.id)); };
+    area.appendChild(el);
+  });
+  // 出口
+  sc.exits.forEach(x=>{
+    const el = document.createElement('div'); el.className='exit';
+    el.style.left = x.x+'%'; el.style.top = x.y+'%';
+    el.innerHTML = `<span class="emoji">${x.emoji}</span><span class="tag">${x.name}</span>`;
+    el.onclick = ev=>{ ev.stopPropagation(); walkThen(x.x, x.y, ()=>{
+      log(`来到了 ${SCENES[x.to].name}。`, 'sys');
+      if(SCENES[x.to].wild) log('这里野外妖怪出没，走路时小心「踩雷」遇敌！', 'battle');
+      enterMap(x.to, x.px, x.py); save();
+    }); };
+    area.appendChild(el);
+  });
+  // 玩家
+  const p = document.createElement('div'); p.id='player-sprite';
+  p.innerHTML = `<span class="emoji">${CLASSES[S.cls].emoji}</span><span class="tag">${S.name}</span>`;
+  area.appendChild(p);
+  const pos = pct2px(area, px!==undefined?px:S.px, py!==undefined?py:S.py);
+  pPos = pos; moveTarget = null; pendingAction = null;
+  placePlayer();
+  updateHUD();
+}
+function placePlayer(){
+  const p = $('#player-sprite'); if(!p) return;
+  p.style.left = pPos.x+'px'; p.style.top = pPos.y+'px';
+}
+function walkThen(xPct, yPct, cb){
+  const area = $('#map-area');
+  const t = pct2px(area, xPct, yPct);
+  moveTarget = {x:t.x, y:t.y+6};
+  pendingAction = cb;
+}
+$('#map-area').addEventListener('click', e=>{
+  if(inBattle) return;
+  const r = $('#map-area').getBoundingClientRect();
+  moveTarget = { x:e.clientX-r.left, y:e.clientY-r.top };
+  pendingAction = null;
+});
+// 移动主循环（用 setInterval 而非 rAF，避免标签页后台时角色卡住）
+function mapLoop(){
+  if(inBattle || !S || !$('#screen-map').classList.contains('active')) return;
+  const p = $('#player-sprite'); if(!p) return;
+  if(moveTarget){
+    const dx = moveTarget.x-pPos.x, dy = moveTarget.y-pPos.y;
+    const dist = Math.hypot(dx,dy);
+    if(dist < 4){
+      moveTarget = null; p.classList.remove('walking');
+      const act = pendingAction; pendingAction = null;
+      if(act) act();
+    } else {
+      const step = 3.2;
+      pPos.x += dx/dist*step; pPos.y += dy/dist*step;
+      p.classList.add('walking');
+      placePlayer();
+      // 野外踩雷
+      if(SCENES[S.scene].wild){
+        walkDistAcc += step;
+        if(walkDistAcc > 110){
+          walkDistAcc = 0;
+          if(Math.random() < 0.30){
+            moveTarget = null; pendingAction = null; p.classList.remove('walking');
+            triggerEncounter();
+          }
+        }
+      }
+    }
+  }
+  // 记录百分比位置用于存档
+  const area = $('#map-area');
+  S.px = 100*pPos.x/area.clientWidth; S.py = 100*pPos.y/area.clientHeight;
+}
+setInterval(mapLoop, 16);
+
+// 世界频道彩蛋
+function startWorldChat(){
+  clearInterval(worldChatTimer);
+  worldChatTimer = setInterval(()=>{
+    if(!inBattle && S && $('#screen-map').classList.contains('active') && Math.random()<0.8){
+      log(WORLD_CHAT[ri(0,WORLD_CHAT.length-1)], 'world');
+    }
+  }, 22000);
+}
+startWorldChat();
+
+/* ==================== NPC ==================== */
+function npcTalk(id){
+  if(id==='yao'){
+    let html = `<div style="margin-bottom:6px">👴：少侠出门在外，药可不能省。瞧瞧要点什么？</div>`;
+    for(const [iid,it] of Object.entries(ITEMS)){
+      html += `<div class="row"><span>${it.emoji} ${it.name} <small style="color:#a07a3a">${it.desc}</small></span>
+        <span>${it.price}两 <button class="mh-btn" onclick="buyItem('${iid}')">购买</button></span></div>`;
+    }
+    html += `<div style="margin-top:8px;color:#a04010">身上银两：${S.money} 两</div>`;
+    openModal('长安药店', html);
+  } else if(id==='inn'){
+    openModal('长安客栈', `
+      <div>👩：客官里边请~ 上好的客房，包您气血魔法全满！</div>
+      <div class="row"><span>🛏️ 住店休息（人宠全恢复）</span>
+        <span>30两 <button class="mh-btn" onclick="restInn()">休息</button></span></div>
+      <div style="margin-top:8px;color:#a04010">身上银两：${S.money} 两</div>`);
+  } else if(id==='bing'){
+    const tips = [
+      '💂：城东的建邺郊外最近妖怪闹得凶，去练练身手吧。不过记得带够药！',
+      '💂：听说野外的海毛虫、大海龟都能捕捉来当召唤兽，战斗里选「捕捉」就行。妖怪血越少越容易抓！',
+      '💂：强盗身上的银子多，但是凶得很，还抓不了……小心点。',
+      '💂：打不过就跑，跑不掉就吃药，药也没了就……回来找老板娘住店吧，哈哈哈！',
+    ];
+    openModal('守城老兵', `<div style="font-size:17px;line-height:2">${tips[ri(0,tips.length-1)]}</div>`);
+  }
+}
+window.buyItem = function(iid){
+  const it = ITEMS[iid];
+  if(S.money < it.price){ log('银两不足！', 'battle'); return; }
+  S.money -= it.price;
+  S.items[iid] = (S.items[iid]||0)+1;
+  sfx.click(); log(`购买了 ${it.emoji}${it.name} ×1。`); save(); updateHUD();
+  npcTalk('yao'); // 刷新弹窗
+};
+window.restInn = function(){
+  if(S.money < 30){ log('银两不足！', 'battle'); return; }
+  S.money -= 30;
+  S.hp = S.maxHp; S.mp = S.maxMp;
+  if(S.pet){ S.pet.hp = S.pet.maxHp; }
+  sfx.heal(); log('美美地睡了一觉，人和召唤兽都精神饱满！'); save(); updateHUD();
+  closeModal();
+};
+
+/* ==================== 背包 / 召唤兽 ==================== */
+function openBag(){
+  let html = '';
+  let empty = true;
+  for(const [iid,cnt] of Object.entries(S.items)){
+    if(cnt<=0) continue; empty = false;
+    const it = ITEMS[iid];
+    html += `<div class="row"><span>${it.emoji} ${it.name} ×${cnt} <small style="color:#a07a3a">${it.desc}</small></span>
+      <span><button class="mh-btn" onclick="useItemMap('${iid}','me')">自己用</button>
+      ${S.pet?`<button class="mh-btn" onclick="useItemMap('${iid}','pet')">喂宠物</button>`:''}</span></div>`;
+  }
+  if(empty) html = '<div style="text-align:center;padding:30px 0">背包空空如也……去药店买点吧。</div>';
+  openModal('背包', html);
+}
+window.useItemMap = function(iid, who){
+  if((S.items[iid]||0) <= 0) return;
+  const it = ITEMS[iid];
+  if(who==='pet' && !S.pet) return;
+  const t = who==='pet' ? S.pet : S;
+  if(it.heal.hp && t.hp >= t.maxHp){ log('气血已满，不用浪费药啦。'); return; }
+  if(it.heal.mp && t.mp !== undefined && t.mp >= t.maxMp){ log('魔法已满，不用浪费药啦。'); return; }
+  S.items[iid]--;
+  if(it.heal.hp) t.hp = clamp(t.hp+it.heal.hp, 0, t.maxHp);
+  if(it.heal.mp && t.mp !== undefined) t.mp = clamp(t.mp+it.heal.mp, 0, t.maxMp);
+  sfx.heal();
+  log(`${who==='pet'?S.pet.name:'你'} 使用了 ${it.name}。`);
+  save(); updateHUD(); openBag();
+};
+function openPet(){
+  if(!S.pet){
+    openModal('召唤兽', '<div style="text-align:center;padding:26px 0;line-height:2">你还没有召唤兽。<br>去建邺城郊外，在战斗中选「捕捉」抓一只吧！<br>妖怪血越少，越容易抓哦。</div>');
+    return;
+  }
+  const p = S.pet;
+  openModal('召唤兽', `
+    <div style="text-align:center;font-size:56px">${p.emoji}</div>
+    <div style="text-align:center;font-size:20px;margin:4px 0">${p.name} Lv.${p.lv}</div>
+    <div style="line-height:2;text-align:center">
+      气血 ${p.hp}/${p.maxHp}　攻击 ${p.atk}<br>防御 ${p.def}　速度 ${p.spd}<br>
+      经验 ${p.exp}/${petExpNeed(p.lv)}</div>
+    <div style="text-align:center;margin-top:10px">
+      <button class="mh-btn" onclick="releasePet()">放 生</button></div>`);
+}
+window.releasePet = function(){
+  if(!S.pet) return;
+  if(!confirm(`真的要放生 ${S.pet.name} 吗？它会记得你的。`)) return;
+  log(`${S.pet.emoji}${S.pet.name} 恋恋不舍地回归了山野……`, 'sys');
+  S.pet = null; save(); closeModal();
+};
+$('#btn-bag').onclick = openBag;
+$('#btn-pet').onclick = openPet;
+$('#btn-save').onclick = ()=>{ save(); sfx.click(); log('游戏已保存。'); };
+
+/* ==================== 战斗 ==================== */
+let B = null; // 战斗状态
+
+function blog(msg){
+  const el = $('#battle-log'); const p = document.createElement('div');
+  p.textContent = msg; el.appendChild(p);
+  while(el.children.length>30) el.removeChild(el.firstChild);
+  el.scrollTop = el.scrollHeight;
+}
+function physDmg(a, t){
+  let d = a.atk * rnd(0.88,1.12) - t.def*0.6;
+  if(t.defending) d *= 0.5;
+  return Math.max(1, Math.round(d));
+}
+function magDmg(a, t, mult){
+  let d = (a.mag||a.atk) * mult * rnd(0.9,1.1) - t.def*0.35;
+  if(t.defending) d *= 0.5;
+  return Math.max(1, Math.round(d));
+}
+
+function makeSprite(actor, x, y){
+  const el = document.createElement('div');
+  el.className = 'sprite '+(actor.side==='enemy'?'enemy':'ally');
+  el.innerHTML = `<span class="emoji">${actor.emoji}</span>
+    <span class="sp-name">${actor.name} Lv.${actor.lv}</span>
+    <div class="sp-hp"><i></i></div>`;
+  el.style.left = x+'%'; el.style.top = y+'%';
+  actor.el = el; actor.bx = x; actor.by = y;
+  el.onclick = ()=>{ if(B && B.pickResolve && el.classList.contains('targetable')) B.pickResolve(actor); };
+  $('#battle-field').appendChild(el);
+  refreshSprite(actor);
+}
+function refreshSprite(a){
+  if(!a.el) return;
+  a.el.querySelector('.sp-hp i').style.width = (100*clamp(a.hp,0,a.maxHp)/a.maxHp)+'%';
+  a.el.classList.toggle('dead', !a.alive);
+}
+function popup(target, text, cls=''){
+  const el = document.createElement('div');
+  el.className = 'dmgpop '+cls; el.textContent = text;
+  el.style.left = target.bx+'%';
+  el.style.top = `calc(${target.by}% - 60px)`;
+  $('#battle-field').appendChild(el);
+  setTimeout(()=>el.remove(), 900);
+}
+
+function triggerEncounter(){
+  if(inBattle) return;
+  inBattle = true;
+  sfx.encounter();
+  const f = $('#flash'); f.classList.remove('go'); void f.offsetWidth; f.classList.add('go');
+  log('遭遇了妖怪！', 'battle');
+  setTimeout(startBattle, 380);
+}
+
+function startBattle(){
+  const field = $('#battle-field');
+  field.innerHTML = '<div class="bf-decor" style="left:4%;top:6%;font-size:44px">🌄</div>' +
+                    '<div class="bf-decor" style="right:6%;top:10%;font-size:36px">☁️</div>' +
+                    '<div class="bf-decor" style="left:46%;top:78%;font-size:30px;opacity:.5">🌿</div>';
+  $('#battle-log').innerHTML = '';
+  $('#battle-menu').innerHTML = '';
+  $('#battle-result').classList.remove('show');
+
+  // 我方
+  const allies = [];
+  const me = { side:'ally', kind:'player', name:S.name, emoji:CLASSES[S.cls].emoji, lv:S.lv,
+    hp:S.hp, maxHp:S.maxHp, mp:S.mp, maxMp:S.maxMp, atk:S.atk, mag:S.mag, def:S.def, spd:S.spd,
+    alive:S.hp>0, defending:false };
+  allies.push(me);
+  let pet = null;
+  if(S.pet && S.pet.hp>0){
+    pet = { side:'ally', kind:'pet', name:S.pet.name, emoji:S.pet.emoji, lv:S.pet.lv,
+      hp:S.pet.hp, maxHp:S.pet.maxHp, mag:0, atk:S.pet.atk, def:S.pet.def, spd:S.pet.spd,
+      alive:true, defending:false };
+    allies.push(pet);
+  }
+  // 敌方（1~3 只，按玩家等级缩放）
+  const pool = ['haimaochong','haimaochong','juwa','juwa','dahaigui','xiejiang','shuguai','qiangdao'];
+  const n = ri(1, 3);
+  const enemies = [];
+  for(let i=0;i<n;i++){
+    const mid = pool[ri(0,pool.length-1)];
+    const m = MONSTERS[mid];
+    const lv = Math.max(1, S.lv + ri(-1,1));
+    const f = 1 + (lv-1)*0.28;
+    enemies.push({ side:'enemy', kind:'monster', mid, name:m.name, emoji:m.emoji, lv,
+      hp:Math.round(m.hp*f), maxHp:Math.round(m.hp*f), mag:0,
+      atk:Math.round(m.atk*f), def:Math.round(m.def*f), spd:Math.round(m.spd*f),
+      exp:Math.round(m.exp*(1+(lv-1)*0.25)), money:Math.round(m.money*(1+(lv-1)*0.2)),
+      catch:m.catch, alive:true, defending:false });
+  }
+  B = { me, pet, allies, enemies, over:false, pickResolve:null };
+
+  // 布阵：敌左上，我右下（经典斜排）
+  const ePos = [[22,42],[12,58],[31,28]];
+  enemies.forEach((e,i)=> makeSprite(e, ePos[i][0], ePos[i][1]));
+  makeSprite(me, 74, 62);
+  if(pet) makeSprite(pet, 61, 78);
+
+  showScreen('#screen-battle');
+  blog(`野外遭遇：${enemies.map(e=>e.name+' Lv.'+e.lv).join('、')}！`);
+  battleLoop();
+}
+
+function aliveOf(list){ return list.filter(a=>a.alive); }
+function battleOverCheck(){
+  if(aliveOf(B.enemies).length===0){ B.over='win'; return true; }
+  if(!B.me.alive){ B.over='lose'; return true; }
+  return false;
+}
+
+/* --- 菜单 & 目标选择 --- */
+function menu(items, cancelable){
+  const box = $('#battle-menu');
+  return new Promise((res, rej)=>{
+    box.innerHTML = '';
+    items.forEach(it=>{
+      const b = document.createElement('button');
+      b.className = 'mh-btn'; b.textContent = it.label;
+      if(it.disabled) b.disabled = true;
+      b.onclick = ()=>{ sfx.click(); res(it.id); };
+      box.appendChild(b);
+    });
+    if(cancelable){
+      const c = document.createElement('button');
+      c.className = 'mh-btn'; c.textContent = '↩ 返回';
+      c.onclick = ()=>{ sfx.click(); rej('cancel'); };
+      box.appendChild(c);
+    }
+  });
+}
+function pickTarget(cands, tipText){
+  const box = $('#battle-menu');
+  return new Promise((res, rej)=>{
+    box.innerHTML = `<div class="menu-tip">${tipText}</div>`;
+    const c = document.createElement('button');
+    c.className = 'mh-btn'; c.textContent = '↩ 取消';
+    c.onclick = ()=>{ cleanup(); rej('cancel'); };
+    box.appendChild(c);
+    cands.forEach(a=>a.el.classList.add('targetable'));
+    B.pickResolve = a=>{ cleanup(); res(a); };
+    function cleanup(){
+      B.pickResolve = null;
+      B.allies.concat(B.enemies).forEach(a=>a.el && a.el.classList.remove('targetable'));
+    }
+  });
+}
+
+async function getPlayerCommand(){
+  const me = B.me;
+  while(true){
+    try{
+      const cmd = await menu([
+        {id:'atk', label:'⚔️ 攻击'}, {id:'skill', label:'📜 法术'},
+        {id:'def', label:'🛡️ 防御'}, {id:'item', label:'🎒 道具'},
+        {id:'catch', label:'🪤 捕捉'}, {id:'flee', label:'💨 逃跑'},
+      ], false);
+      if(cmd==='atk'){
+        const t = await pickTarget(aliveOf(B.enemies), '选择攻击目标：');
+        return {type:'atk', actor:me, target:t};
+      }
+      if(cmd==='skill'){
+        const sk = await menu(CLASSES[S.cls].skills.map(id=>({
+          id, label:`${SKILLS[id].name}(${SKILLS[id].mp})`, disabled:me.mp<SKILLS[id].mp })), true);
+        const skill = SKILLS[sk];
+        if(skill.type==='heal'){
+          const t = await pickTarget(aliveOf(B.allies), `${skill.name}：选择要治疗的队友`);
+          return {type:'skill', actor:me, skill:sk, target:t};
+        }
+        if(skill.aoe) return {type:'skill', actor:me, skill:sk, target:null};
+        const t = await pickTarget(aliveOf(B.enemies), `${skill.name}：选择目标`);
+        return {type:'skill', actor:me, skill:sk, target:t};
+      }
+      if(cmd==='def') return {type:'def', actor:me};
+      if(cmd==='item'){
+        const usable = Object.entries(S.items).filter(([id,c])=>c>0);
+        if(usable.length===0){ blog('背包里没有道具了！'); continue; }
+        const iid = await menu(usable.map(([id,c])=>({id, label:`${ITEMS[id].emoji}${ITEMS[id].name}×${c}`})), true);
+        const t = await pickTarget(aliveOf(B.allies), `${ITEMS[iid].name}：选择使用对象`);
+        return {type:'item', actor:me, item:iid, target:t};
+      }
+      if(cmd==='catch'){
+        const cands = aliveOf(B.enemies).filter(e=>e.catch);
+        if(cands.length===0){ blog('这里没有能捕捉的妖怪！'); continue; }
+        const t = await pickTarget(cands, '选择要捕捉的妖怪（血越少越好抓）：');
+        return {type:'catch', actor:me, target:t};
+      }
+      if(cmd==='flee') return {type:'flee', actor:me};
+    }catch(e){ if(e!=='cancel') throw e; }
+  }
+}
+
+/* --- 动作执行 --- */
+async function animAttack(a, t){
+  const f = $('#battle-field');
+  const dx = (t.bx-a.bx)/100*f.clientWidth * 0.72;
+  const dy = (t.by-a.by)/100*f.clientHeight * 0.72;
+  a.el.classList.add('acting');
+  a.el.style.transform = `translate(calc(-50% + ${dx}px), calc(-100% + ${dy}px))`;
+  await sleep(270);
+  t.el.classList.add('hit'); setTimeout(()=>t.el.classList.remove('hit'), 300);
+  a.el.style.transform = '';
+  await sleep(270);
+  a.el.classList.remove('acting');
+}
+function applyDamage(t, dmg){
+  t.hp = clamp(t.hp-dmg, 0, t.maxHp);
+  popup(t, '-'+dmg);
+  if(t.hp<=0){ t.alive = false; }
+  refreshSprite(t);
+}
+function retarget(actor, orig){
+  if(orig && orig.alive) return orig;
+  const list = actor.side==='ally' ? aliveOf(B.enemies) : aliveOf(B.allies);
+  return list.length ? list[ri(0,list.length-1)] : null;
+}
+
+async function execAction(act){
+  const a = act.actor;
+  if(!a.alive || B.over) return;
+  a.defending = false;
+  if(act.type==='atk'){
+    const t = retarget(a, act.target); if(!t) return;
+    sfx.hit();
+    await animAttack(a, t);
+    const d = physDmg(a, t);
+    applyDamage(t, d);
+    blog(`${a.name} 攻击 ${t.name}，造成 ${d} 点伤害${t.alive?'':'，'+t.name+' 倒下了！'}`);
+  }
+  else if(act.type==='skill'){
+    const sk = SKILLS[act.skill];
+    if(a.mp < sk.mp){ blog(`${a.name} 魔法不足，改为普通攻击。`); await execAction({type:'atk', actor:a, target:act.target}); return; }
+    a.mp -= sk.mp;
+    if(a.kind==='player'){ S.mp = a.mp; }
+    if(sk.type==='heal'){
+      const t = retarget2Ally(act.target);
+      sfx.heal();
+      const amount = Math.round(a.mag*sk.mult + 40);
+      t.hp = clamp(t.hp+amount, 0, t.maxHp);
+      popup(t, '+'+amount, 'heal'); refreshSprite(t);
+      blog(`${a.name} 使用 ${sk.name}，${t.name} 恢复 ${amount} 点气血。`);
+    } else if(sk.aoe){
+      sfx.magic();
+      a.el.classList.add('acting');
+      a.el.style.transform = 'translate(-50%,-120%) scale(1.15)';
+      await sleep(300); a.el.style.transform=''; a.el.classList.remove('acting');
+      const targets = aliveOf(B.enemies);
+      let msg = [];
+      for(const t of targets){
+        const d = sk.type==='phys' ? Math.max(1,Math.round(physDmg(a,t)*sk.mult)) : magDmg(a,t,sk.mult);
+        applyDamage(t, d);
+        msg.push(`${t.name} -${d}`);
+      }
+      await sleep(350);
+      blog(`${a.name} 施展 ${sk.name}！${msg.join('，')}`);
+    } else {
+      const t = retarget(a, act.target); if(!t) return;
+      sfx.magic();
+      await animAttack(a, t);
+      const d = magDmg(a, t, sk.mult);
+      applyDamage(t, d);
+      blog(`${a.name} 施展 ${sk.name}，对 ${t.name} 造成 ${d} 点伤害${t.alive?'':'，'+t.name+' 倒下了！'}`);
+    }
+  }
+  else if(act.type==='def'){
+    a.defending = true;
+    popup(a, '防御', 'info');
+    blog(`${a.name} 摆出了防御姿态。`);
+    await sleep(300);
+  }
+  else if(act.type==='item'){
+    if((S.items[act.item]||0)<=0) return;
+    S.items[act.item]--;
+    const it = ITEMS[act.item];
+    const t = retarget2Ally(act.target);
+    sfx.heal();
+    if(it.heal.hp){ t.hp = clamp(t.hp+it.heal.hp,0,t.maxHp); popup(t,'+'+it.heal.hp,'heal'); }
+    if(it.heal.mp && t.kind==='player'){ t.mp = clamp(t.mp+it.heal.mp,0,t.maxMp); S.mp=t.mp; popup(t,'+'+it.heal.mp+'MP','heal'); }
+    refreshSprite(t);
+    blog(`${a.name} 使用了 ${it.name}。`);
+    await sleep(350);
+  }
+  else if(act.type==='catch'){
+    const t = act.target;
+    if(!t.alive){ blog('目标已经倒下，无法捕捉。'); return; }
+    a.el.style.transform = 'translate(-50%,-110%)';
+    await sleep(250); a.el.style.transform='';
+    const chance = 0.22 + 0.65*(1 - t.hp/t.maxHp);
+    blog(`${a.name} 掏出一个乾坤袋，试图捕捉 ${t.name}……`);
+    await sleep(600);
+    if(Math.random() < chance){
+      sfx.catch();
+      popup(t, '捕捉成功！', 'info');
+      t.alive = false; t.hp = 0; t.caught = true; refreshSprite(t);
+      const old = S.pet;
+      const st = petStats(t.mid, t.lv);
+      S.pet = { mid:t.mid, name:t.name, emoji:t.emoji, lv:t.lv, exp:0,
+                hp:Math.round(st.maxHp*0.5), ...st };
+      blog(`🎉 捕捉成功！${t.name} 成为了你的召唤兽！`);
+      if(old) blog(`原来的 ${old.name} 回归了山野……`);
+      await sleep(500);
+    } else {
+      popup(t, '挣脱了！', 'info');
+      blog(`${t.name} 挣脱了乾坤袋！`);
+      await sleep(400);
+    }
+  }
+  else if(act.type==='flee'){
+    const fastest = Math.max(...aliveOf(B.enemies).map(e=>e.spd));
+    const chance = clamp(0.55 + (a.spd-fastest)*0.03, 0.25, 0.95);
+    if(Math.random() < chance){
+      sfx.flee();
+      blog('三十六计走为上，逃跑成功！');
+      B.over = 'flee';
+    } else {
+      popup(a, '没跑掉！', 'info');
+      blog('逃跑失败，被妖怪拦了回来！');
+      await sleep(400);
+    }
+  }
+  refreshHudFromBattle();
+}
+function retarget2Ally(orig){
+  if(orig && orig.alive) return orig;
+  const list = aliveOf(B.allies);
+  return list[0];
+}
+function refreshHudFromBattle(){
+  S.hp = B.me.hp; S.mp = B.me.mp;
+  if(B.pet && S.pet){ S.pet.hp = B.pet.hp; }
+}
+
+async function battleLoop(){
+  while(!B.over){
+    // 收集指令
+    const acts = [];
+    if(B.me.alive) acts.push(await getPlayerCommand());
+    $('#battle-menu').innerHTML = '<div class="menu-tip">回合进行中……</div>';
+    if(B.pet && B.pet.alive){
+      const t = aliveOf(B.enemies);
+      if(t.length) acts.push({type:'atk', actor:B.pet, target:t[ri(0,t.length-1)]});
+    }
+    for(const e of aliveOf(B.enemies)){
+      const t = aliveOf(B.allies);
+      if(t.length) acts.push({type:'atk', actor:e, target:t[ri(0,t.length-1)]});
+    }
+    // 速度排序执行
+    acts.sort((x,y)=>(y.actor.spd+rnd(0,3)) - (x.actor.spd+rnd(0,3)));
+    for(const act of acts){
+      if(B.over) break;
+      await execAction(act);
+      if(battleOverCheck()) break;
+      await sleep(150);
+    }
+    battleOverCheck();
+  }
+  await sleep(400);
+  endBattle();
+}
+
+function endBattle(){
+  const result = B.over;
+  refreshHudFromBattle();
+  if(result==='win'){
+    let exp = 0, money = 0;
+    B.enemies.forEach(e=>{ if(!e.caught){ exp += e.exp; money += e.money; } else { exp += Math.round(e.exp/2); } });
+    money += ri(0, 10);
+    S.exp += exp; S.money += money;
+    const lines = [`获得经验 ${exp} 点`, `获得银两 ${money} 两`];
+    // 掉落
+    if(Math.random()<0.3){
+      const drop = Math.random()<0.7?'baozi':'jinchuang';
+      S.items[drop] = (S.items[drop]||0)+1;
+      lines.push(`拾取了 ${ITEMS[drop].emoji}${ITEMS[drop].name} ×1`);
+    }
+    // 升级
+    let leveled = false;
+    while(S.exp >= expNeed(S.lv)){
+      S.exp -= expNeed(S.lv); S.lv++;
+      const st = classStats(S.cls, S.lv);
+      Object.assign(S, st);
+      S.hp = S.maxHp; S.mp = S.maxMp;
+      lines.push(`🎉 等级提升！现在是 Lv.${S.lv}`);
+      leveled = true;
+    }
+    if(S.pet){
+      S.pet.exp += Math.round(exp*0.8);
+      while(S.pet.exp >= petExpNeed(S.pet.lv)){
+        S.pet.exp -= petExpNeed(S.pet.lv); S.pet.lv++;
+        const st = petStats(S.pet.mid, S.pet.lv);
+        const hpPct = S.pet.hp/S.pet.maxHp;
+        Object.assign(S.pet, st);
+        S.pet.hp = Math.round(st.maxHp*Math.max(hpPct,0.6));
+        lines.push(`${S.pet.emoji}${S.pet.name} 升到了 Lv.${S.pet.lv}`);
+      }
+    }
+    if(leveled) sfx.levelup(); else sfx.catch();
+    $('#result-box h2').textContent = '战斗胜利';
+    $('#result-box .lines').innerHTML = lines.join('<br>');
+    $('#battle-result').classList.add('show');
+    $('#btn-result-ok').onclick = ()=>{ backToMap(); };
+  } else if(result==='lose'){
+    $('#result-box h2').textContent = '战斗失败';
+    $('#result-box .lines').innerHTML = '你眼前一黑……<br>醒来时发现自己躺在长安客栈里。<br>（白无常似乎把你送了回来）';
+    $('#battle-result').classList.add('show');
+    $('#btn-result-ok').onclick = ()=>{
+      S.hp = Math.max(1, Math.round(S.maxHp*0.3)); S.mp = Math.round(S.maxMp*0.3);
+      if(S.pet) S.pet.hp = Math.max(1, Math.round(S.pet.maxHp*0.3));
+      backToMap('changan', 48, 60);
+    };
+  } else { // flee
+    backToMap();
+  }
+}
+function backToMap(scene, px, py){
+  inBattle = false; B = null;
+  save();
+  if(scene) enterMap(scene, px, py);
+  else enterMap(S.scene, S.px, S.py);
+  updateHUD();
+}
+
+/* ==================== 初始化 ==================== */
+(function init(){
+  $('#btn-continue').disabled = !load();
+  renderSelect();
+})();
+</script>
+</body>
+</html>
