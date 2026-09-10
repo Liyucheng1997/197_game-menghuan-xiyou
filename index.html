@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>梦幻西游 · 怀旧版</title>
+<title>梦幻西游 · 怀旧版 v1.1</title>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; user-select:none; }
   html,body { height:100%; background:#1a1208; display:flex; align-items:center; justify-content:center;
@@ -157,8 +157,13 @@
   #btn-bgm { position:absolute; top:8px; right:8px; z-index:50; width:38px; height:38px; border-radius:50%;
     border:2px solid #8b5a2b; background:#f5e3b0; font-size:18px; }
 </style>
+<link rel="stylesheet" href="classic.css">
+<script src="assets/manifest.js"></script>
+<script src="classic.js"></script>
+<script src="world.js"></script>
 </head>
 <body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><filter id="sprite-black-key" color-interpolation-filters="sRGB"><feColorMatrix type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  255 255 255 0 0"/></filter></defs></svg>
 <div id="stage">
 
   <!-- 标题 -->
@@ -181,7 +186,7 @@
     <div id="class-cards"></div>
     <div id="name-row">
       侠名：<input id="inp-name" maxlength="8" placeholder="起个响亮的名字">
-      <button class="mh-btn" id="btn-create">进入长安</button>
+      <button class="mh-btn" id="btn-create">进入建邺</button>
     </div>
   </div>
 
@@ -251,23 +256,23 @@ const CLASSES = {
     base:{hp:130,mp:45,atk:24,mag:8,def:13,spd:12},
     grow:{hp:24,mp:6,atk:4.6,mag:1.2,def:2.6,spd:2.0},
     skills:['hsqj'] },
-  xys: { name:'逍遥生', school:'龙宫', emoji:'🧙‍♂️',
+  ltz: { name:'龙太子', school:'龙宫', emoji:'🧙‍♂️',
     desc:'家住东海龙宫，一手龙卷雨击席卷全场。法系群攻，清怪如麻。',
     base:{hp:95,mp:85,atk:13,mag:26,def:10,spd:14},
     grow:{hp:18,mp:12,atk:2.0,mag:4.8,def:2.0,spd:2.2},
-    skills:['ljyj','erlong'] },
+    skills:['ljyj','longteng'] },
   xce: { name:'玄彩娥', school:'普陀山', emoji:'🧚‍♀️',
-    desc:'落伽山下好修行，能打能奶。灵动九天伤敌，推气过宫救人。',
+    desc:'普陀山弟子，日光华伤敌，普度众生持续恢复队友气血。',
     base:{hp:105,mp:75,atk:15,mag:20,def:11,spd:16},
     grow:{hp:20,mp:10,atk:2.6,mag:4.0,def:2.2,spd:2.6},
-    skills:['ldjt','tqgg'] },
+    skills:['rgh','pdzs'] },
 };
 const SKILLS = {
-  hsqj:  { name:'横扫千军', mp:20, type:'phys', mult:1.15, aoe:true,  desc:'挥剑横扫，攻击所有敌人' },
+  hsqj:  { name:'横扫千军', mp:0, type:'phys', mult:1, aoe:false, hits:3, desc:'气血高于50%时三连击；消耗10%气血，下回合休息' },
   ljyj:  { name:'龙卷雨击', mp:25, type:'mag',  mult:1.35, aoe:true,  desc:'呼风唤雨，法术攻击所有敌人' },
-  erlong:{ name:'二龙戏珠', mp:15, type:'mag',  mult:2.1,  aoe:false, desc:'对单个敌人造成高额法术伤害' },
-  ldjt:  { name:'灵动九天', mp:15, type:'mag',  mult:2.0,  aoe:false, desc:'对单个敌人造成法术伤害' },
-  tqgg:  { name:'推气过宫', mp:20, type:'heal', mult:3.2,  aoe:false, desc:'为一名队友恢复气血' },
+  longteng:{ name:'龙腾', mp:15, type:'mag', mult:2.1, aoe:false, desc:'单体法术攻击' },
+  rgh:   { name:'日光华', mp:15, type:'fixed', mult:2, aoe:false, desc:'对单个目标造成固定伤害（试玩数值）' },
+  pdzs:  { name:'普度众生', mp:20, type:'heal', mult:1.2, aoe:false, desc:'恢复气血，并在随后3回合持续恢复（试玩数值）' },
 };
 const MONSTERS = {
   haimaochong:{ name:'海毛虫', emoji:'🐛', hp:58,  atk:14, def:6,  spd:8,  exp:14, money:12, catch:true },
@@ -297,6 +302,8 @@ const SCENES = {
     exits:[ {name:'回长安城', emoji:'🚩', x:8, y:74, to:'changan', px:82, py:70} ] },
 };
 SCENES.jiaowai.wild = true;
+Classic.configure();
+World.configure();
 const WORLD_CHAT = [
   '【世界】风花雪月夜：收一只高资质大海龟，价格好商量~',
   '【世界】长安一片月：来个普陀妹妹带我抓鬼呀',
@@ -331,11 +338,16 @@ function newGame(cls, name){
   S = { cls, name, lv:1, exp:0, money:300,
         hp:st.maxHp, mp:st.maxMp, ...st,
         items:{ baozi:3, jinchuang:1, dingshen:1 },
-        pet:null, scene:'changan', px:30, py:72 };
+        pet:null, scene:'jianye', px:30, py:72 };
 }
 function save(){ if(S) localStorage.setItem(SAVE_KEY, JSON.stringify(S)); }
 function load(){
-  try { const d = JSON.parse(localStorage.getItem(SAVE_KEY)); return d && d.cls ? d : null; }
+  try { const d = JSON.parse(localStorage.getItem(SAVE_KEY));
+    if(!d || !d.cls) return null;
+    if(d.cls==='xys') d.cls='ltz';
+    if(!CLASSES[d.cls]) return null;
+    if(!SCENES[d.scene]) d.scene='jianye';
+    return d; }
   catch(e){ return null; }
 }
 
@@ -360,13 +372,15 @@ $('#modal-close').onclick = closeModal;
 
 function updateHUD(){
   if(!S) return;
-  $('#hud-avatar').textContent = CLASSES[S.cls].emoji;
+  $('#hud-avatar').innerHTML = World.portrait(S.cls);
   $('#hud-name').textContent = `${S.name} · ${CLASSES[S.cls].name} Lv.${S.lv}`;
   $('#hud-hp-fill').style.width = (100*S.hp/S.maxHp)+'%';
   $('#hud-mp-fill').style.width = (100*S.mp/S.maxMp)+'%';
   $('#hud-exp-fill').style.width = (100*S.exp/expNeed(S.lv))+'%';
   $('#hud-money').textContent = `💰 ${S.money} 两`;
   $('#hud-scene').textContent = SCENES[S.scene].name;
+  $('#hud-info').title = `气血 ${S.hp}/${S.maxHp}　魔法 ${S.mp}/${S.maxMp}　经验 ${S.exp}/${expNeed(S.lv)}`;
+  if($('#coordinates')) Classic.refresh();
 }
 
 /* ==================== 音效 / BGM ==================== */
@@ -419,7 +433,7 @@ function renderSelect(){
   for(const [id,c] of Object.entries(CLASSES)){
     const d = document.createElement('div');
     d.className = 'card'+(id===selCls?' sel':'');
-    d.innerHTML = `<div class="face">${c.emoji}</div><h3>${c.name}</h3>
+    d.innerHTML = `<div class="face">${World.portrait(id)}</div><h3>${c.name}</h3>
       <div class="school">「${c.school}」</div><div class="desc">${c.desc}</div>
       <div class="stats">气血 ${c.base.hp}　魔法 ${c.base.mp}<br>攻击 ${c.base.atk}　法力 ${c.base.mag}<br>防御 ${c.base.def}　速度 ${c.base.spd}</div>`;
     d.onclick = ()=>{ selCls = id; sfx.click(); renderSelect(); };
@@ -438,15 +452,15 @@ $('#btn-continue').onclick = ()=>{
 $('#btn-create').onclick = ()=>{
   const name = $('#inp-name').value.trim() || '无名侠客';
   newGame(selCls, name); save(); sfx.levelup();
-  enterMap('changan', 30, 72);
-  log(`欢迎来到长安城，${name}！`);
-  log('【提示】点击地面移动，点击 NPC 对话，走到红旗🚩处切换地图。', 'sys');
-  log('【提示】去建邺城郊外练级，别忘了在战斗中「捕捉」一只召唤兽！', 'sys');
+  enterMap('jianye', 30, 72);
+  log(`欢迎来到建邺城，${name}！`);
+  log('【提示】点击地面移动，点击 NPC 对话，点击蓝色传送点切换地图。', 'sys');
+  log('【提示】Tab 地图，Alt+E 背包，Alt+P 召唤兽，Alt+W 法术，Alt+Q 任务。', 'sys');
 };
 
 /* ==================== 地图 ==================== */
 let pPos = {x:300, y:400};       // 玩家像素坐标
-let moveTarget = null, pendingAction = null, walkDistAcc = 0;
+let moveTarget = null, pendingAction = null, walkDistAcc = 0, movePath = [];
 let worldChatTimer = null;
 
 function pct2px(area, x, y){ return { x: area.clientWidth*x/100, y: area.clientHeight*y/100 }; }
@@ -454,10 +468,13 @@ function pct2px(area, x, y){ return { x: area.clientWidth*x/100, y: area.clientH
 function enterMap(sceneId, px, py){
   S.scene = sceneId;
   const sc = SCENES[sceneId];
-  const area = $('#map-area');
-  area.className = sc.cls;
-  area.innerHTML = '';
+  const viewport = $('#map-area');
+  viewport.className = sc.cls;
+  viewport.innerHTML = '';
+  const area = World.create(viewport,sceneId);
   showScreen('#screen-map');
+  Classic.mapArt(area, sceneId);
+  Classic.music(sceneId);
   // 装饰
   sc.decor.forEach(d=>{
     const el = document.createElement('div'); el.className='decor';
@@ -468,7 +485,7 @@ function enterMap(sceneId, px, py){
   sc.npcs.forEach(n=>{
     const el = document.createElement('div'); el.className='npc';
     el.style.left = n.x+'%'; el.style.top = n.y+'%';
-    el.innerHTML = `<span class="emoji">${n.emoji}</span><span class="tag">${n.name}</span>`;
+    el.innerHTML = `<span class="emoji">${Classic.actor(n.id)}</span><span class="tag">${n.name}</span>`;
     el.onclick = ev=>{ ev.stopPropagation(); walkThen(n.x, n.y, ()=>npcTalk(n.id)); };
     area.appendChild(el);
   });
@@ -486,37 +503,39 @@ function enterMap(sceneId, px, py){
   });
   // 玩家
   const p = document.createElement('div'); p.id='player-sprite';
-  p.innerHTML = `<span class="emoji">${CLASSES[S.cls].emoji}</span><span class="tag">${S.name}</span>`;
+  p.innerHTML = `<span class="emoji">${Classic.actor(S.cls)}</span><span class="tag">${Classic.escape(S.name)}</span>`;
   area.appendChild(p);
-  const pos = pct2px(area, px!==undefined?px:S.px, py!==undefined?py:S.py);
-  pPos = pos; moveTarget = null; pendingAction = null;
+  const pos = World.snap(sceneId,px!==undefined?px:S.px,py!==undefined?py:S.py);
+  pPos = pos; moveTarget = null; pendingAction = null; movePath=[];
+  S.px=100*pos.x/area.clientWidth; S.py=100*pos.y/area.clientHeight;
   placePlayer();
   updateHUD();
 }
 function placePlayer(){
   const p = $('#player-sprite'); if(!p) return;
   p.style.left = pPos.x+'px'; p.style.top = pPos.y+'px';
+  World.follow();
 }
 function walkThen(xPct, yPct, cb){
-  const area = $('#map-area');
+  const area = $('#map-world');
   const t = pct2px(area, xPct, yPct);
-  moveTarget = {x:t.x, y:t.y+6};
-  pendingAction = cb;
+  Classic.moveTo(t.x,t.y+6,cb);
 }
 $('#map-area').addEventListener('click', e=>{
   if(inBattle) return;
   const r = $('#map-area').getBoundingClientRect();
-  moveTarget = { x:e.clientX-r.left, y:e.clientY-r.top };
-  pendingAction = null;
+  Classic.moveTo((e.clientX-r.left)*$('#map-area').clientWidth/r.width+World.camera.x,(e.clientY-r.top)*$('#map-area').clientHeight/r.height+World.camera.y);
 });
 // 移动主循环（用 setInterval 而非 rAF，避免标签页后台时角色卡住）
 function mapLoop(){
-  if(inBattle || !S || !$('#screen-map').classList.contains('active')) return;
+  if(inBattle || !S || $('#modal').classList.contains('show') || !$('#screen-map').classList.contains('active')) return;
   const p = $('#player-sprite'); if(!p) return;
   if(moveTarget){
     const dx = moveTarget.x-pPos.x, dy = moveTarget.y-pPos.y;
     const dist = Math.hypot(dx,dy);
     if(dist < 4){
+      pPos={...moveTarget};placePlayer();
+      if(movePath.length){moveTarget=movePath.shift();return;}
       moveTarget = null; p.classList.remove('walking');
       const act = pendingAction; pendingAction = null;
       if(act) act();
@@ -539,8 +558,9 @@ function mapLoop(){
     }
   }
   // 记录百分比位置用于存档
-  const area = $('#map-area');
+  const area = $('#map-world');
   S.px = 100*pPos.x/area.clientWidth; S.py = 100*pPos.y/area.clientHeight;
+  Classic.refresh();
 }
 setInterval(mapLoop, 16);
 
@@ -553,10 +573,11 @@ function startWorldChat(){
     }
   }, 22000);
 }
-startWorldChat();
+// 单机模式不伪造在线玩家消息。
 
 /* ==================== NPC ==================== */
 function npcTalk(id){
+  if(id==='bing') return Classic.quest();
   if(id==='yao'){
     let html = `<div style="margin-bottom:6px">👴：少侠出门在外，药可不能省。瞧瞧要点什么？</div>`;
     for(const [iid,it] of Object.entries(ITEMS)){
@@ -674,8 +695,8 @@ function magDmg(a, t, mult){
 function makeSprite(actor, x, y){
   const el = document.createElement('div');
   el.className = 'sprite '+(actor.side==='enemy'?'enemy':'ally');
-  el.innerHTML = `<span class="emoji">${actor.emoji}</span>
-    <span class="sp-name">${actor.name} Lv.${actor.lv}</span>
+  el.innerHTML = `<span class="emoji">${Classic.actor(actor.kind==='player'?S.cls:actor.mid||S.pet?.mid||'bing')}</span>
+    <span class="sp-name">${Classic.escape(actor.name)} Lv.${actor.lv}</span>
     <div class="sp-hp"><i></i></div>`;
   el.style.left = x+'%'; el.style.top = y+'%';
   actor.el = el; actor.bx = x; actor.by = y;
@@ -723,13 +744,13 @@ function startBattle(){
   allies.push(me);
   let pet = null;
   if(S.pet && S.pet.hp>0){
-    pet = { side:'ally', kind:'pet', name:S.pet.name, emoji:S.pet.emoji, lv:S.pet.lv,
+    pet = { side:'ally', kind:'pet', savedPet:S.pet, mid:S.pet.mid, name:S.pet.name, emoji:S.pet.emoji, lv:S.pet.lv,
       hp:S.pet.hp, maxHp:S.pet.maxHp, mag:0, atk:S.pet.atk, def:S.pet.def, spd:S.pet.spd,
       alive:true, defending:false };
     allies.push(pet);
   }
   // 敌方（1~3 只，按玩家等级缩放）
-  const pool = ['haimaochong','haimaochong','juwa','juwa','dahaigui','xiejiang','shuguai','qiangdao'];
+  const pool = SCENES[S.scene].pool || ['dahaigui','haimaochong'];
   const n = ri(1, 3);
   const enemies = [];
   for(let i=0;i<n;i++){
@@ -743,7 +764,8 @@ function startBattle(){
       exp:Math.round(m.exp*(1+(lv-1)*0.25)), money:Math.round(m.money*(1+(lv-1)*0.2)),
       catch:m.catch, alive:true, defending:false });
   }
-  B = { me, pet, allies, enemies, over:false, pickResolve:null };
+  B = { me, pet, allies, enemies, over:false, pickResolve:null, round:0 };
+  field.innerHTML=''; Classic.mapArt(field, S.scene);
 
   // 布阵：敌左上，我右下（经典斜排）
   const ePos = [[22,42],[12,58],[31,28]];
@@ -752,6 +774,7 @@ function startBattle(){
   if(pet) makeSprite(pet, 61, 78);
 
   showScreen('#screen-battle');
+  Classic.music('battle');
   blog(`野外遭遇：${enemies.map(e=>e.name+' Lv.'+e.lv).join('、')}！`);
   battleLoop();
 }
@@ -800,11 +823,11 @@ function pickTarget(cands, tipText){
   });
 }
 
-async function getPlayerCommand(){
-  const me = B.me;
+async function getPlayerCommand(me = B.me){
   while(true){
     try{
-      const cmd = await menu([
+      $('#round-label').textContent=`第 ${B.round} 回合 · ${me.kind==='pet'?'召唤兽':'人物'}指令`;
+      const cmd = await menu(me.kind==='pet' ? [{id:'atk',label:'攻击'},{id:'def',label:'防御'}] : [
         {id:'atk', label:'⚔️ 攻击'}, {id:'skill', label:'📜 法术'},
         {id:'def', label:'🛡️ 防御'}, {id:'item', label:'🎒 道具'},
         {id:'catch', label:'🪤 捕捉'}, {id:'flee', label:'💨 逃跑'},
@@ -815,7 +838,7 @@ async function getPlayerCommand(){
       }
       if(cmd==='skill'){
         const sk = await menu(CLASSES[S.cls].skills.map(id=>({
-          id, label:`${SKILLS[id].name}(${SKILLS[id].mp})`, disabled:me.mp<SKILLS[id].mp })), true);
+          id, label:`${SKILLS[id].name}(${id==='hsqj'?'气血':SKILLS[id].mp})`, disabled:me.mp<SKILLS[id].mp || (id==='hsqj' && me.hp<=me.maxHp*.5) })), true);
         const skill = SKILLS[sk];
         if(skill.type==='heal'){
           const t = await pickTarget(aliveOf(B.allies), `${skill.name}：选择要治疗的队友`);
@@ -872,7 +895,7 @@ function retarget(actor, orig){
 async function execAction(act){
   const a = act.actor;
   if(!a.alive || B.over) return;
-  a.defending = false;
+  if(act.type==='rest'){ popup(a,'休息','info'); blog(`${a.name} 本回合休息。`); return; }
   if(act.type==='atk'){
     const t = retarget(a, act.target); if(!t) return;
     sfx.hit();
@@ -883,6 +906,13 @@ async function execAction(act){
   }
   else if(act.type==='skill'){
     const sk = SKILLS[act.skill];
+    if(act.skill==='hsqj'){
+      if(a.hp<=a.maxHp*.5){blog(`${a.name} 气血不足一半，横扫千军失败。`);return;}
+      const t=retarget(a,act.target);if(!t)return;
+      a.hp=Math.max(1,a.hp-Math.ceil(a.maxHp*.1));a.restTurns=1;refreshSprite(a);
+      for(let hit=0;hit<3&&t.alive;hit++){sfx.hit();Classic.effect(t,'hsqj');await animAttack(a,t);const damage=Math.round(physDmg(a,t)*(.9+hit*.1));applyDamage(t,damage);blog(`横扫千军 · 第${hit+1}击：${t.name} -${damage}`);}
+      refreshHudFromBattle();return;
+    }
     if(a.mp < sk.mp){ blog(`${a.name} 魔法不足，改为普通攻击。`); await execAction({type:'atk', actor:a, target:act.target}); return; }
     a.mp -= sk.mp;
     if(a.kind==='player'){ S.mp = a.mp; }
@@ -890,6 +920,7 @@ async function execAction(act){
       const t = retarget2Ally(act.target);
       sfx.heal();
       const amount = Math.round(a.mag*sk.mult + 40);
+      Classic.effect(t,act.skill);t.regen={amount:Math.round(amount*.5),turns:3};
       t.hp = clamp(t.hp+amount, 0, t.maxHp);
       popup(t, '+'+amount, 'heal'); refreshSprite(t);
       blog(`${a.name} 使用 ${sk.name}，${t.name} 恢复 ${amount} 点气血。`);
@@ -901,6 +932,7 @@ async function execAction(act){
       const targets = aliveOf(B.enemies);
       let msg = [];
       for(const t of targets){
+        Classic.effect(t,act.skill);
         const d = sk.type==='phys' ? Math.max(1,Math.round(physDmg(a,t)*sk.mult)) : magDmg(a,t,sk.mult);
         applyDamage(t, d);
         msg.push(`${t.name} -${d}`);
@@ -910,8 +942,9 @@ async function execAction(act){
     } else {
       const t = retarget(a, act.target); if(!t) return;
       sfx.magic();
+      Classic.effect(t,act.skill);
       await animAttack(a, t);
-      const d = magDmg(a, t, sk.mult);
+      const d = sk.type==='fixed' ? 20+a.lv*5 : magDmg(a, t, sk.mult);
       applyDamage(t, d);
       blog(`${a.name} 施展 ${sk.name}，对 ${t.name} 造成 ${d} 点伤害${t.alive?'':'，'+t.name+' 倒下了！'}`);
     }
@@ -981,25 +1014,31 @@ function retarget2Ally(orig){
 }
 function refreshHudFromBattle(){
   S.hp = B.me.hp; S.mp = B.me.mp;
-  if(B.pet && S.pet){ S.pet.hp = B.pet.hp; }
+  if(B.pet && S.pet && B.pet.savedPet===S.pet){ S.pet.hp = B.pet.hp; }
 }
 
 async function battleLoop(){
   while(!B.over){
+    B.round++;
+    for(const a of [...B.allies,...B.enemies]){
+      a.defending=false;
+      if(a.alive && a.regen?.turns>0){a.hp=Math.min(a.maxHp,a.hp+a.regen.amount);a.regen.turns--;popup(a,'+'+a.regen.amount,'heal');refreshSprite(a);}
+    }
     // 收集指令
     const acts = [];
-    if(B.me.alive) acts.push(await getPlayerCommand());
-    $('#battle-menu').innerHTML = '<div class="menu-tip">回合进行中……</div>';
+    if(B.me.alive){if(B.me.restTurns>0){B.me.restTurns--;acts.push({type:'rest',actor:B.me});}else acts.push(await getPlayerCommand());}
     if(B.pet && B.pet.alive){
-      const t = aliveOf(B.enemies);
-      if(t.length) acts.push({type:'atk', actor:B.pet, target:t[ri(0,t.length-1)]});
+      acts.push(await getPlayerCommand(B.pet));
     }
+    $('#battle-menu').innerHTML = '<div class="menu-tip">回合进行中……</div>';
+    $('#round-label').textContent=`第 ${B.round} 回合 · 执行中`;
     for(const e of aliveOf(B.enemies)){
       const t = aliveOf(B.allies);
       if(t.length) acts.push({type:'atk', actor:e, target:t[ri(0,t.length-1)]});
     }
     // 速度排序执行
-    acts.sort((x,y)=>(y.actor.spd+rnd(0,3)) - (x.actor.spd+rnd(0,3)));
+    for(const act of acts){act.initiative=act.actor.spd+rnd(0,3);if(act.type==='def')act.actor.defending=true;}
+    acts.sort((x,y)=>y.initiative-x.initiative);
     for(const act of acts){
       if(B.over) break;
       await execAction(act);
@@ -1016,6 +1055,7 @@ function endBattle(){
   const result = B.over;
   refreshHudFromBattle();
   if(result==='win'){
+    if(S.quest) S.quest.kills=Math.min(3,S.quest.kills+1);
     let exp = 0, money = 0;
     B.enemies.forEach(e=>{ if(!e.caught){ exp += e.exp; money += e.money; } else { exp += Math.round(e.exp/2); } });
     money += ri(0, 10);
@@ -1068,9 +1108,9 @@ function endBattle(){
 }
 function backToMap(scene, px, py){
   inBattle = false; B = null;
-  save();
   if(scene) enterMap(scene, px, py);
   else enterMap(S.scene, S.px, S.py);
+  save();
   updateHUD();
 }
 
@@ -1078,6 +1118,8 @@ function backToMap(scene, px, py){
 (function init(){
   $('#btn-continue').disabled = !load();
   renderSelect();
+  Classic.init();
+  World.init();
 })();
 </script>
 </body>

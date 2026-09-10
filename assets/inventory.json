@@ -1,0 +1,87 @@
+[
+  {
+    "path": "assets/actors/jxk-portrait.png",
+    "bytes": 1882590,
+    "sha256": "971e819b68f0d58c475981583b628a9707e631ff516436e1f35a38c0eec94c3d"
+  },
+  {
+    "path": "assets/actors/jxk.gif",
+    "bytes": 77144,
+    "sha256": "276c76d867875be4c6d3b4d6be4b537cfd8c16d10e918c27732a10c9ae8486c9"
+  },
+  {
+    "path": "assets/actors/ltz-portrait.png",
+    "bytes": 2106095,
+    "sha256": "ac8eaff5433866ecb9ce5f39cffedeeeaa6bd311019c4a30a109a5e3c51d25b4"
+  },
+  {
+    "path": "assets/actors/ltz.gif",
+    "bytes": 111479,
+    "sha256": "9409bba2f688f495e9251439ad39bdec1509e274004c14e94dbdc156a105c997"
+  },
+  {
+    "path": "assets/actors/xce-portrait.png",
+    "bytes": 2168141,
+    "sha256": "92f492dd33642b54ae934e3807b3db297b925b25dd315f8a675a73831c772a65"
+  },
+  {
+    "path": "assets/actors/xce.gif",
+    "bytes": 104905,
+    "sha256": "fe470339a406058cd9bbcdcc4e231e7610b8eafc7d240fb10a562b2fcd5b67c7"
+  },
+  {
+    "path": "assets/maps/changan.jpg",
+    "bytes": 16655089,
+    "sha256": "d788450765b4efa5b08e562b0fdaeb9109c722c20ff1d6ab4db4eb2b753fd041"
+  },
+  {
+    "path": "assets/maps/donghai.jpg",
+    "bytes": 7490508,
+    "sha256": "2fb05c550a42e38dd20041daf733943d693e695d5bab37849e327e02973514bc"
+  },
+  {
+    "path": "assets/maps/jianye.jpg",
+    "bytes": 108962,
+    "sha256": "674520cbd19b6fa05baf4d3f6fd3c500c8104cc3ced61273bb53cae6ec77b537"
+  },
+  {
+    "path": "assets/maps/jiaowai.jpg",
+    "bytes": 11906051,
+    "sha256": "c5038a6e094ad451f94158945cc49767214057fee10fbb79c1e758393e7f2027"
+  },
+  {
+    "path": "assets/music/battle.mp3",
+    "bytes": 707001,
+    "sha256": "49615ecb446b66cf0fbd555dfb9be3ffc832d082d548fc15f8e2386468cb543d"
+  },
+  {
+    "path": "assets/music/changan.mp3",
+    "bytes": 1408546,
+    "sha256": "afd9f7d77959de3eb2678a9a21182f1c37437e84b52bc637f8a399e2924c85b3"
+  },
+  {
+    "path": "assets/music/donghai.mp3",
+    "bytes": 693836,
+    "sha256": "c7c3d0b82b18357e325b48fa6e95fbc5cc8082159f942747521df877608bf63e"
+  },
+  {
+    "path": "assets/music/jianye.mp3",
+    "bytes": 1355883,
+    "sha256": "f752629346b34e09244aab6e6daa5dbbc5438fcc86458345eb6d6b543b380315"
+  },
+  {
+    "path": "assets/music/jiaowai.mp3",
+    "bytes": 939282,
+    "sha256": "b8af4043b490df44ecff2f9f21b2bb101061ffc9cbccd3786f5bddd274037ec9"
+  },
+  {
+    "path": "assets/music/title.mp3",
+    "bytes": 785369,
+    "sha256": "326cb7a81a45c8a1077b93302cf570d2edda5c5e76cf2e8c8af3590c42cf3a1a"
+  },
+  {
+    "path": "assets/ui/logo.png",
+    "bytes": 821749,
+    "sha256": "7f5d95c4094d702fd3ed8e06067e779ec57ad0aa99b37fda21dcbdefbcf86c62"
+  }
+]

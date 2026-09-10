@@ -1,0 +1,16 @@
+<!doctype html><meta charset="utf-8"><title>本地素材解码检查</title>
+<style>body{font:15px system-ui;background:#132536;color:#e8f0eb;padding:28px}li{margin:9px}strong{color:#96e0a5}.failed{color:#ff9595}</style>
+<h1>本地素材解码检查</h1><p id="summary">检查中……</p><ul id="results"></ul>
+<script src="../assets/manifest.js"></script>
+<script>
+const entries=Object.entries(CLASSIC_ASSETS).flatMap(([group,items])=>Object.entries(items).map(([key,src])=>({group,key,src:'../'+src})));
+Promise.all(entries.map(({group,key,src})=>new Promise(resolve=>{
+  const media=group==='music'?new Audio():new Image();let done=false;
+  const finish=(ok,details)=>{if(done)return;done=true;clearTimeout(timer);const li=document.createElement('li');li.className=ok?'':'failed';li.textContent=`${ok?'PASS':'FAIL'} ${group}/${key} — ${details}`;document.querySelector('#results').append(li);resolve(ok);};
+  const timer=setTimeout(()=>finish(false,'加载超时'),20000);
+  media.onerror=()=>finish(false,'资源无法解码');
+  if(group==='music'){media.preload='auto';media.onloadedmetadata=()=>finish(Number.isFinite(media.duration)&&media.duration>0,media.duration.toFixed(2)+' 秒');}
+  else media.onload=()=>finish(media.naturalWidth>0,`${media.naturalWidth} × ${media.naturalHeight}`);
+  media.src=src;
+}))).then(results=>{document.querySelector('#summary').textContent=`${results.filter(Boolean).length} / ${results.length} 通过`;});
+</script>
