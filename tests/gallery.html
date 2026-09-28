@@ -1,0 +1,21 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><title>美术图鉴</title></head>
+<body style="margin:0;background:#8fc46a"><canvas id="c" width="1200" height="820"></canvas>
+<script type="module">
+import { ROLES, MONSTERS, PARTNERS } from '../src/data.js';
+import { drawChibi, drawActor } from '../src/art.js';
+const ctx = document.getElementById('c').getContext('2d'); const Z = +(location.hash.slice(1) || 1); ctx.scale(Z, Z);
+ctx.font = '12px sans-serif'; ctx.textAlign = 'center';
+let x = 50, y = 90;
+const label = (t, x, y) => { ctx.fillStyle = '#123'; ctx.fillText(t, x, y + 16); };
+for (const [id, r] of Object.entries(ROLES)) {
+  ['down', 'right', 'up', 'left'].forEach((d, i) => drawChibi(ctx, x + i * 34, y, r.look, { dir: d, t: 0.3, moving: i === 1 }));
+  label(r.name, x + 50, y); x += 150; if (x > 1100) { x = 50; y += 100; }
+}
+for (const [id, p] of Object.entries(PARTNERS)) { drawChibi(ctx, x, y, p.look, { dir: 'down', t: 0 }); drawChibi(ctx, x + 40, y, p.look, { dir: 'left', pose: 'attack', t: 0 }); label(p.name, x + 20, y); x += 100; if (x > 1100) { x = 50; y += 100; } }
+x = 50; y += 110;
+for (const [id, m] of Object.entries(MONSTERS)) {
+  drawActor(ctx, x, y, m.look, { t: 0.5, scale: m.boss ? 1.3 : 1 }); label(m.name, x, y);
+  x += 85; if (x > 1150) { x = 50; y += 105; }
+}
+window.done = true;
+</script></body></html>

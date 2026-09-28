@@ -1,0 +1,22 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><title>地图预览</title></head>
+<body style="margin:0;background:#222"><canvas id="c"></canvas>
+<script type="module">
+import { getMap } from '../src/maps.js';
+import { renderGround, objectSprite, T } from '../src/mapart.js';
+import { drawActor } from '../src/art.js';
+import { NPCS } from '../src/npcs.js';
+const [id, zs] = (location.hash.slice(1) || 'jianye').split(',');
+const Z = +(zs || 0.5);
+const map = getMap(id);
+const ground = renderGround(map);
+const c = document.getElementById('c'); c.width = map.w * T * Z; c.height = map.h * T * Z;
+const ctx = c.getContext('2d'); ctx.scale(Z, Z);
+ctx.drawImage(ground, 0, 0);
+const items = [];
+for (const o of map.objs) { const s = objectSprite(o, map.theme); const bx = o.type === 'house' || o.type === 'citywall' || o.type === 'fence' || o.type === 'wreck' ? o.x * T : o.x * T + T / 2; const by = o.type === 'house' || o.type === 'citywall' ? o.y * T : o.type === 'fence' ? o.y * T + T / 2 : o.y * T + T - 4; items.push({ y: (o.y + o.h) * T, draw: () => ctx.drawImage(s.img, bx - s.ax, by - s.ay) }); }
+for (const n of map.npcs) items.push({ y: n.y * T + T, draw: () => { drawActor(ctx, n.x * T + T / 2, n.y * T + T - 4, NPCS[n.id].look, { dir: 'down' }); ctx.fillStyle = '#ff0'; ctx.font = '12px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(NPCS[n.id].name, n.x * T + T / 2, n.y * T - 30); } });
+items.sort((a, b) => a.y - b.y).forEach(i => i.draw());
+for (const e of map.exits) { ctx.strokeStyle = '#0ff'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(e.x * T + 16, e.y * T + 16, 20, 0, 7); ctx.stroke(); }
+ctx.fillStyle = '#f0f'; ctx.fillRect(map.spawn[0] * T + 8, map.spawn[1] * T + 8, 16, 16);
+window.done = true;
+</script></body></html>
