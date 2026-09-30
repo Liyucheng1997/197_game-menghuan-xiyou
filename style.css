@@ -250,3 +250,10 @@ b { font-weight: 700; }
 
 ::-webkit-scrollbar { width: 8px; }
 ::-webkit-scrollbar-thumb { background: #c8a060; border-radius: 4px; }
+/* 标题画面账号面板 */
+.t-account { margin-top: 22px; text-align: center; color: #5a3410; font-size: 15px; }
+.t-account .acc-form { display: flex; gap: 8px; justify-content: center; align-items: center; }
+.t-account .inp { width: 170px; user-select: text; }
+.t-account .acc-msg { margin-top: 8px; min-height: 20px; font-size: 14px; color: #8a4a10; }
+.t-account .acc-who .btn { margin-left: 6px; }
+.t-account:empty { display: none; }

@@ -1,16 +1,30 @@
 # 梦幻西游 · Q版
 
-当前版本：**v2.0**。 [在线试玩](https://liyucheng1997.github.io/197_game-menghuan-xiyou/) · [版本说明](CHANGELOG.md)
+当前版本：**v2.1**。 [在线试玩（账号 + 云存档）](https://mhxy.liyucheng.me) · [GitHub Pages 离线版](https://liyucheng1997.github.io/197_game-menghuan-xiyou/) · [版本说明](CHANGELOG.md)
 
-一款浏览器单机回合制 RPG，致敬经典电脑版《梦幻西游》。所有角色、怪物、NPC、地图、建筑与技能特效均由程序实时绘制成 Q 版风格，音乐使用官网公开原声。无需安装，打开网页即可游玩，进度自动保存在浏览器本地。
+一款浏览器单机回合制 RPG，致敬经典电脑版《梦幻西游》。所有角色、怪物、NPC、地图、建筑与技能特效均由程序实时绘制成 Q 版风格，音乐使用官网公开原声。无需安装，打开网页即可游玩。登录账号后进度自动保存到服务器，清除浏览器数据或换设备都不会丢失。
 
 ## 运行
 
 ```bash
-python3 -m http.server 8195   # 或 npm start
+npm start        # 即 node server.js，需要 Node 22.13+，无需安装依赖
 ```
 
 然后打开 http://localhost:8195 。游戏使用 ES Module，必须通过 HTTP 访问，直接双击 `index.html` 无法运行。
+
+`server.js` 同时提供游戏页面和账号接口，账号与存档保存在 `data/mhxy.db`（SQLite）。用 `python3 -m http.server` 等纯静态服务器（或 GitHub Pages）打开时，游戏自动进入离线模式，存档只保存在当前浏览器。
+
+## 账号与云存档
+
+- 首页注册/登录后才能开始游戏；首次登录时，浏览器中已有的存档会自动迁移到账号。本地缓存与云端存档自动取较新的一份。
+- 存档变化后约 1 秒上传，关闭页面时也会补发；上传失败会暂存本机，每 20 秒重试一次。系统面板的「删除存档」会同时删除云端存档。
+- 接口：`POST /api/register`、`POST /api/login`、`POST /api/logout`、`GET /api/me`、`GET|PUT|DELETE /api/save`。
+- 安全：密码用 scrypt 加盐哈希保存；会话为 HttpOnly Cookie，有效期 30 天；同一 IP 登录失败 10 次后锁定 15 分钟。服务端只对外提供 `index.html`、`style.css`、`src/` 与 `assets/`，数据库和部署文件无法通过网址访问。
+- 防丢档：每个账号在 `save_history` 表中保留最近 30 份历史存档（最多每 5 分钟一份，删档前也会留一份）；数据库每天快照到 `data/backups/`，保留 14 天。
+
+## 部署
+
+线上地址 https://mhxy.liyucheng.me ，运行在 reader-server 的 `/opt/apps/mhxy`（systemd 服务 `app-mhxy`，端口 4195，Nginx 反代 + Let's Encrypt 证书）。更新后执行 `npm run deploy`：先跑测试，再同步程序文件并重启服务，`data/` 中的账号与存档不受影响。首次部署到新服务器时使用 `bash deploy/deploy.sh --init`。
 
 ## 游戏内容
 
@@ -63,13 +77,16 @@ src/art.js               Q 版人物与怪物的程序绘制
 src/world.js             大地图场景：移动、镜头、NPC、传送、天气
 src/game.js              规则：NPC 交互、主线与日常任务、遇敌、奖励
 src/panels.js            HUD 与各功能面板
+src/cloud.js             账号登录与云存档同步
 src/state.js / npcs.js / enemies.js / ui.js / audio.js / util.js
+server.js                账号、云存档接口与静态文件服务（零依赖）
+deploy/                  systemd、Nginx 配置与一键部署脚本
 ```
 
 ## 测试
 
 ```bash
-npm test               # Node 内置测试：地图连通、任务引用、战斗规则、平衡、存档
+npm test               # Node 内置测试：地图连通、任务引用、战斗规则、平衡、存档，以及账号与云存档接口
 npm run balance        # 打印各阶段战斗的模拟胜率
 npm run test:e2e       # 浏览器端到端：自动打通全部主线（需要 Playwright）
 ```

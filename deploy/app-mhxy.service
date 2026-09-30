@@ -1,0 +1,16 @@
+[Unit]
+Description=app-mhxy (梦幻西游 账号与云存档)
+After=network.target
+[Service]
+User=ubuntu
+WorkingDirectory=/opt/apps/mhxy
+ExecStart=/usr/bin/node server.js
+Environment=PORT=4195
+Environment=DATA_DIR=/opt/apps/mhxy/data
+Environment=NODE_NO_WARNINGS=1
+UMask=0077
+Restart=always
+RestartSec=3
+MemoryMax=300M
+[Install]
+WantedBy=multi-user.target

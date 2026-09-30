@@ -5,8 +5,10 @@ import { playerStats, petStats, partnerStats } from './stats.js';
 import { mkUnit } from './battle-core.js';
 import { rand, randi, pick, shuffle } from './util.js';
 
-const SAVE_KEY = 'mhxy-q-save-v2';
+export const SAVE_KEY = 'mhxy-q-save-v2';
 export const G = { S: null };
+let saveHook = null;   // 云存档：每次保存后把存档交给 cloud.js 上传
+export function onSave(fn) { saveHook = fn; }
 let uidSeq = Date.now() % 100000;
 const nextUid = () => ++uidSeq;
 
@@ -36,7 +38,9 @@ export function newGame(role, name) {
 
 export function save() {
   if (!G.S) return;
+  G.S.savedAt = Date.now();
   try { localStorage.setItem(SAVE_KEY, JSON.stringify(G.S)); } catch (e) { /* 存储不可用 */ }
+  saveHook?.(G.S);
 }
 export function hasSave() {
   try { return !!localStorage.getItem(SAVE_KEY); } catch (e) { return false; }

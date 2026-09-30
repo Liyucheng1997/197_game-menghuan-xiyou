@@ -1,6 +1,7 @@
 // 启动：标题、创建角色、主循环、输入
 import { ROLES, RACES, SCHOOLS } from './data.js';
-import { G, newGame, load, hasSave, save, stats } from './state.js';
+import { G, newGame, load, hasSave, save, stats, onSave } from './state.js';
+import { Cloud } from './cloud.js';
 import { petStats } from './stats.js';
 import { drawChibi } from './art.js';
 import { updateTweens, esc, pick } from './util.js';
@@ -71,9 +72,13 @@ function showTitle() {
   Game.R.scene = 'title';
   const scr = $('#scr-title');
   scr.innerHTML = `<div class="logo"><img src="assets/ui/logo.png" alt="梦幻西游"><div class="logo-q">Q版 · 单机重制</div></div>
+    <div class="t-account" id="t-account"></div>
     <div class="t-btns"><button class="btn big primary" id="t-new">开始新游戏</button>${hasSave() ? '<button class="btn big" id="t-cont">继续游戏</button>' : ''}<button class="btn big" id="t-help">操作说明</button></div>
-    <div class="t-foot">音乐为梦幻西游官网原声 · 美术为程序绘制的Q版风格 · 进度保存在浏览器本地</div>`;
+    <div class="t-foot">音乐为梦幻西游官网原声 · 美术为程序绘制的Q版风格 · ${Cloud.mode === 'offline' ? '进度保存在浏览器本地' : '进度保存在云端账号'}</div>`;
   scr.classList.remove('hidden');
+  Cloud.mount($('#t-account'));
+  // 有服务端时必须先登录；没有服务端（如 GitHub Pages）则直接以离线模式游玩
+  if (Cloud.mode === 'guest' || Cloud.mode === 'connecting') scr.querySelector('.t-btns').style.display = 'none';
   $('#t-new').onclick = () => { Audio2.unlock(); Audio2.play('title'); showCreate(); };
   $('#t-cont') && ($('#t-cont').onclick = () => { Audio2.unlock(); if (load()) startGame(); else toast('存档损坏，请重新开始'); });
   $('#t-help').onclick = () => { Audio2.unlock(); Audio2.play('title'); P.helpPanel(); };
@@ -212,6 +217,11 @@ window.addEventListener('beforeunload', () => { if (G.S && Game.R.scene !== 'tit
 
 // ---------------- 启动 ----------------
 Audio2.load();
+onSave(S => Cloud.push(S));
 showTitle();
+Cloud.boot({
+  onChange: () => { if (Game.R.scene === 'title' && !$('#scr-title').classList.contains('hidden')) showTitle(); },
+  notify: msg => { if (Game.R.scene !== 'title') toast(msg); },
+});
 requestAnimationFrame(loop);
 window.__game = { G, Game, World, Battle, P };

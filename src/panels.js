@@ -10,6 +10,7 @@ import { NPCS } from './npcs.js';
 import * as Game from './game.js';
 import { esc, fmt } from './util.js';
 import { Audio2 } from './audio.js';
+import { Cloud } from './cloud.js';
 
 const pc = (look, size) => { const c = document.createElement('canvas'); c.width = c.height = size; c.getContext('2d').drawImage(portrait(look, size), 0, 0); return c; };
 
@@ -331,12 +332,20 @@ export function systemPanel() {
     <button class="btn" id="s-sfx">音效：${Audio2.sfxOn ? '开' : '关'}</button>
     <button class="btn" id="s-help">操作说明</button>
     <button class="btn danger" id="s-new">删除存档，重新开始</button></div>
-    <div class="muted">游戏每次切换地图、战斗结束时自动保存到浏览器本地。</div>`;
-  b.querySelector('#s-save').onclick = () => { save(); toast('已保存'); };
+    <div class="muted">游戏每次切换地图、战斗结束时自动保存${Cloud.mode === 'user' ? `到云端账号「${esc(Cloud.user)}」` : '到浏览器本地'}。</div>`;
+  b.querySelector('#s-save').onclick = async () => {
+    save();
+    if (Cloud.mode !== 'user') { toast('已保存'); return; }
+    toast(await Cloud.flush() ? '已保存到云端' : '云端暂时连不上，进度已暂存本机');
+  };
   b.querySelector('#s-music').onclick = () => { Audio2.toggleMusic(); systemPanel(); };
   b.querySelector('#s-sfx').onclick = () => { Audio2.toggleSfx(); systemPanel(); };
   b.querySelector('#s-help').onclick = () => helpPanel();
-  b.querySelector('#s-new').onclick = async () => { if (await confirmBox('确定删除存档吗？所有进度将丢失！', '删除', '取消')) { wipe(); location.reload(); } };
+  b.querySelector('#s-new').onclick = async () => { if (await confirmBox('确定删除存档吗？所有进度将丢失！', '删除', '取消')) {
+    try { await Cloud.wipe(); } catch (e) { toast('云端存档删除失败，请稍后再试'); return; }
+    G.S = null;   // 防止刷新时 beforeunload 把内存中的旧存档再写回去
+    wipe(); location.reload();
+  } };
 }
 export function helpPanel() {
   panel('操作说明', `<div class="help">
