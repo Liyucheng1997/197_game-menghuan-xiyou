@@ -151,23 +151,54 @@ function startGame(fresh) {
 }
 
 // ---------------- 主循环 ----------------
-let last = performance.now(), hudTimer = 0, regenTimer = 0, saveTimer = 0;
-function loop(now) {
-  const dt = Math.min(50, now - last);
-  last = now;
+// 逻辑与绘制分离：切屏（标签页隐藏、窗口最小化）后浏览器会停掉 requestAnimationFrame，
+// 这时由后台定时器按真实流逝的时间继续推进逻辑，只是不再绘制画面，回来时画面直接是最新状态。
+const STEP = 50;                      // 单步逻辑最长 50ms，保证寻路、碰撞与动画不跳帧
+const MAX_CATCHUP = 10 * 60 * 1000;   // 电脑休眠等超长间隔最多补 10 分钟
+let last = performance.now(), hudTimer = 0, regenTimer = 0, saveTimer = 0, ticking = false, frameDt = 16;
+
+function step(dt) {
   updateTweens(dt);
   const scene = Game.R.scene;
-  if (scene === 'title') { drawTitleBg(dt); createAnim?.(); }
-  else if (scene === 'world') {
+  if (scene === 'world') {
     World.update(dt);
-    World.render(ctx);
     hudTimer += dt; regenTimer += dt; saveTimer += dt;
     if (hudTimer > 250) { hudTimer = 0; P.refreshHud(); }
     if (regenTimer > 3000) { regenTimer = 0; regen(); }
     if (saveTimer > 30000) { saveTimer = 0; G.S.playTime += 30; save(); }
-  } else if (scene === 'battle') { Battle.update(dt); Battle.render(ctx); }
+  } else if (scene === 'battle') Battle.update(dt);
+}
+function draw() {
+  const scene = Game.R.scene;
+  if (scene === 'title') { drawTitleBg(frameDt); createAnim?.(); }
+  else if (scene === 'world') World.render(ctx);
+  else if (scene === 'battle') Battle.render(ctx);
+}
+// 让出若干轮微任务，使战斗中 await tween()/wait() 的异步链在两步之间能接着往下走
+async function drainMicrotasks() { for (let i = 0; i < 12; i++) await null; }
+
+async function advance(now) {
+  if (ticking) return;
+  ticking = true;
+  try {
+    let elapsed = Math.min(MAX_CATCHUP, Math.max(0, now - last));
+    last = now;
+    frameDt = Math.min(STEP, elapsed);
+    while (elapsed > 0) {
+      const dt = Math.min(STEP, elapsed);
+      elapsed -= dt;
+      step(dt);
+      if (elapsed > 0) await drainMicrotasks();
+    }
+  } finally { ticking = false; }
+}
+function loop(now) {
+  advance(now);
+  if (!document.hidden) draw();
   requestAnimationFrame(loop);
 }
+// rAF 停摆时（切屏、最小化）由它接手；后台定时器会被浏览器降频，advance 会按实际间隔补齐
+setInterval(() => { const now = performance.now(); if (now - last > 200) advance(now); }, 250);
 function regen() {
   const S = G.S; if (!S) return;
   const st = stats();
