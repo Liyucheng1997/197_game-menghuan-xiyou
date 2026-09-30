@@ -1,0 +1,45 @@
+name: Deploy to mhxy.liyucheng.me
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-mhxy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Test
+        run: npm test
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.MHXY_DEPLOY_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          echo "151.80.60.57 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJX3C2/3Kxz6CYrjuY6dY+1U2nLsr0gY8u6ggeX06crr" >> ~/.ssh/known_hosts
+
+      # 服务器上该密钥被限制为只能运行 /usr/local/bin/mhxy-deploy，发布包从标准输入传入
+      - name: Deploy
+        run: tar -czf - index.html style.css src assets server.js deploy | ssh ubuntu@151.80.60.57
+
+      - name: Verify live site
+        run: |
+          sleep 2
+          for url in https://mhxy.liyucheng.me/ https://mhxy.liyucheng.me/api/me; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" "$url")
+            echo "$url -> $code"
+            test "$code" = "200"
+          done

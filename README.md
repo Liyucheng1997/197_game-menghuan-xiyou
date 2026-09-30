@@ -24,7 +24,12 @@ npm start        # 即 node server.js，需要 Node 22.13+，无需安装依赖
 
 ## 部署
 
-线上地址 https://mhxy.liyucheng.me ，运行在 reader-server 的 `/opt/apps/mhxy`（systemd 服务 `app-mhxy`，端口 4195，Nginx 反代 + Let's Encrypt 证书）。更新后执行 `npm run deploy`：先跑测试，再同步程序文件并重启服务，`data/` 中的账号与存档不受影响。首次部署到新服务器时使用 `bash deploy/deploy.sh --init`。
+线上地址 https://mhxy.liyucheng.me ，运行在 reader-server 的 `/opt/apps/mhxy`（systemd 服务 `app-mhxy`，端口 4195，Nginx 反代 + Let's Encrypt 证书）。
+
+**自动部署**：推送到 GitHub 的 `master` 分支即可。`.github/workflows/deploy.yml` 会先跑 `npm test`，通过后把 `index.html`、`style.css`、`src/`、`assets/`、`server.js` 打包发到服务器，由 `/usr/local/bin/mhxy-deploy`（源文件 `deploy/mhxy-deploy`）校验、替换程序文件并重启服务，最后检查线上地址。`data/` 中的账号与存档不受影响。GitHub Pages 离线版也同时从 `master` 更新。进度可在仓库的 Actions 页查看，也可以在那里手动重新运行。
+
+- 部署密钥保存在仓库 Secret `MHXY_DEPLOY_KEY`；服务器 `authorized_keys` 中该公钥带 `command="/usr/local/bin/mhxy-deploy",restrict`，只能执行发布，不能登录 shell 或转发端口。需要更换时重新生成一对密钥，替换这两处即可。
+- 手动部署（备用）：`npm run deploy`，使用本机的 `reader-server` SSH 配置。首次部署到新服务器时使用 `bash deploy/deploy.sh --init`，它会同时安装 systemd 服务、Nginx 站点、HTTPS 证书和 `mhxy-deploy` 发布入口。
 
 ## 游戏内容
 

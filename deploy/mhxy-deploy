@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# 服务器端发布入口，安装在 /usr/local/bin/mhxy-deploy。
+# GitHub Actions 的部署密钥在 authorized_keys 中被强制只能运行本脚本：
+# 从标准输入接收 tar.gz 发布包 → 校验 → 替换程序文件 → 重启服务。data/ 中的账号与存档不会被触碰。
+set -euo pipefail
+APP=/opt/apps/mhxy
+FILES="index.html style.css src assets server.js"
+TMP=$(mktemp -d)
+trap 'rm -rf "$TMP"' EXIT
+
+tar -xzf - -C "$TMP"
+rm -rf "$TMP/data"
+for f in $FILES; do
+  test -e "$TMP/$f" || { echo "发布包缺少 $f，已取消发布" >&2; exit 1; }
+done
+node --check "$TMP/server.js"
+
+cd "$APP"
+rm -rf $FILES deploy
+cp -a "$TMP"/. "$APP"/
+sudo systemctl restart app-mhxy
+sleep 1
+systemctl is-active app-mhxy
+curl -fsS http://127.0.0.1:4195/api/me
+echo
+echo "发布完成：$(date '+%F %T')"

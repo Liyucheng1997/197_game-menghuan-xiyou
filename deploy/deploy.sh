@@ -15,6 +15,7 @@ tar -cf - $FILES | ssh "$HOST" "tar -xf - -C $APP"
 
 if [ "${1:-}" = "--init" ]; then
   ssh "$HOST" "set -e
+    sudo install -m 755 $APP/deploy/mhxy-deploy /usr/local/bin/mhxy-deploy
     sudo cp $APP/deploy/app-mhxy.service /etc/systemd/system/app-mhxy.service
     sudo systemctl daemon-reload && sudo systemctl enable --now app-mhxy
     if [ ! -f /etc/nginx/sites-available/mhxy.liyucheng.me ]; then   # 已存在则保留 certbot 写入的 HTTPS 配置
