@@ -14,7 +14,7 @@ export function enemyUnit(mid, level, opts = {}) {
     side: 'enemy', kind: 'monster', mid, name: opts.name || (baby ? m.name + '宝宝' : m.name), level,
     hp: st.maxHp, maxHp: st.maxHp, mp: st.maxMp, maxMp: st.maxMp, atk: st.atk, def: st.def, spd: st.spd, mpow: st.mpow,
     skills: (m.skills || []).map(id => ({ id, lv: level })), traits: [...(m.traits || [])], look: m.look,
-    ghost: !!m.ghost, boss: !!(m.boss || opts.boss), baby,
+    ghost: !!m.ghost, boss: !!(m.boss || opts.boss), baby, enrage: !!(m.enrage || opts.enrage),
     catchable: !m.boss && !opts.boss && !opts.noCatch && m.pet !== undefined && m.pet < 900,
     ai: m.boss || opts.boss ? 'boss' : 'monster', exp: opts.exp, leader: !!opts.leader,
   });

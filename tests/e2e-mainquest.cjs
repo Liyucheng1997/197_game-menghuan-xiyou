@@ -29,14 +29,14 @@ server.listen(0, async () => {
     const clickAll = async () => { for (let i = 0; i < 10; i++) { const o = await p.$('#dialog:not(.hidden) .opt'); if (!o) break; const prim = await p.$('#dialog .opt.primary'); await (prim || o).click(); await p.waitForTimeout(60); } };
     await clickAll();
     const state = () => p.evaluate(() => { const S = window.__game.G.S; return { step: S.quests.main.step, state: S.quests.main.state, lv: S.level, school: S.school }; });
-    const boost = lv => p.evaluate(async lv => { const st = await import('./src/state.js'); const { expNeed } = await import('./src/data.js'); const S = st.G.S; let e = 0; for (let l = S.level; l < lv; l++) e += expNeed(l); st.gainExp(e); st.fullHeal(); }, lv);
+    const boost = lv => p.evaluate(async lv => { const st = await import('./src/state.js'); const { expNeed } = await import('./src/data.js'); const S = st.G.S; S.breaks = 4; let e = 0; for (let l = S.level; l < lv; l++) e += expNeed(l); st.gainExp(e); st.fullHeal(); }, lv);
     const talk = id => p.evaluate(async id => { const { npcMap } = await import('./src/game.js'); const W = window.__game.World; const m = npcMap(id); if (W.W.map.id !== m) W.enterMap(m); await new Promise(r => setTimeout(r, 30)); window.__game.Game.interact(W.allNpcs().find(x => x.id === id)); }, id);
     const win = async () => { for (let i = 0; i < 400; i++) { await p.waitForTimeout(100); if (await p.evaluate(() => window.__game.Game.R.scene) === 'world') return; await p.evaluate(() => { const B = window.__game.Battle.BT.B; if (B) for (const u of B.units) if (u.side === 'enemy') u.hp = Math.min(u.hp, 1); }); const a = await p.$('#bt-auto:not(.on)'); if (a) await a.click(); if (await p.$('#bt-result:not(.hidden)')) await p.mouse.click(480, 320); } fail('战斗未结束'); };
-    for (let guard = 0; guard < 80; guard++) {
+    for (let guard = 0; guard < 200; guard++) {
       const s = await state();
       const st = await p.evaluate(async () => { const { MAIN } = await import('./src/game.js'); return MAIN[window.__game.G.S.quests.main.step] || null; });
       if (!st) break;
-      if (s.lv < st.lv + 8) await boost(Math.min(69, st.lv + 12));
+      if (s.lv < st.lv + 8) await boost(Math.min(150, st.lv + 12));
       const who = k => (k === 'master' ? 'master_' + s.school : k);
       if (s.state === 'accept') { await talk(who(st.giver)); await p.waitForTimeout(100); await clickAll(); }
       else if (s.state === 'turnin') { await talk(who(st.turnin)); await p.waitForTimeout(100); await clickAll(); }

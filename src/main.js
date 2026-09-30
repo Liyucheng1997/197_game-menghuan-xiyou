@@ -158,15 +158,18 @@ const MAX_CATCHUP = 10 * 60 * 1000;   // 电脑休眠等超长间隔最多补 10
 let last = performance.now(), hudTimer = 0, regenTimer = 0, saveTimer = 0, ticking = false, frameDt = 16;
 
 function step(dt) {
-  updateTweens(dt);
   const scene = Game.R.scene;
+  // VIP2 解锁战斗二倍速：动画与补间一起加速
+  const bdt = scene === 'battle' && Battle.fast() ? dt * 2 : dt;
+  updateTweens(bdt);
+  if (scene === 'world' || scene === 'battle') Game.tick(dt);
   if (scene === 'world') {
     World.update(dt);
     hudTimer += dt; regenTimer += dt; saveTimer += dt;
     if (hudTimer > 250) { hudTimer = 0; P.refreshHud(); }
     if (regenTimer > 3000) { regenTimer = 0; regen(); }
     if (saveTimer > 30000) { saveTimer = 0; G.S.playTime += 30; save(); }
-  } else if (scene === 'battle') Battle.update(dt);
+  } else if (scene === 'battle') Battle.update(bdt);
 }
 function draw() {
   const scene = Game.R.scene;
@@ -240,7 +243,7 @@ document.addEventListener('keydown', e => {
   if (ARROWS[e.key]) { World.keyMove(ARROWS[e.key]); e.preventDefault(); return; }
   if (UI.dialogOpen) return;
   const k = e.key.toLowerCase();
-  const map = { w: 'char', e: 'bag', p: 'pet', f: 'skill', q: 'quest', t: 'team', tab: 'map', m: 'map' };
+  const map = { w: 'char', e: 'bag', p: 'pet', f: 'skill', q: 'quest', t: 'team', tab: 'map', m: 'map', h: 'act', b: 'mall' };
   if (map[k]) { e.preventDefault(); P.openPanel(map[k]); }
 });
 document.addEventListener('keyup', e => { if (ARROWS[e.key] && World.W.keyDir === ARROWS[e.key]) World.keyMove(null); });

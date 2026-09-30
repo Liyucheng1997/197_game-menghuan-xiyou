@@ -523,7 +523,8 @@ export function portrait(lk, size = 64, key) {
   if (!lk.shape || lk.shape === 'human') drawChibi(ctx, size / 2, size * 1.62, lk, { dir: 'down', scale: s * 1.25 });
   else {
     const wide = ['quad', 'turtle', 'caterpillar', 'crab', 'spider'].includes(lk.shape);
-    drawMonster(ctx, size / 2 - (wide ? 7 : 2) * s * 0.85, size * (wide ? 0.88 : 0.95), lk, { scale: s * (wide ? 0.62 : 0.8) });
+    // 鬼魂类身体悬浮在较高处，头像里往下挪一些免得被裁掉
+    drawMonster(ctx, size / 2 - (wide ? 7 : 2) * s * 0.85, size * (wide ? 0.88 : lk.shape === 'ghost' ? 1.12 : 0.95), lk, { scale: s * (wide ? 0.62 : 0.8) });
   }
   portraitCache.set(k, c);
   return c;

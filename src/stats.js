@@ -13,14 +13,39 @@ export function derive(attr, level, equipSum = {}, passive = {}) {
   return s;
 }
 
+// 装备强化：每强化一级，装备全部属性提升 7%
+export const plusMul = plus => 1 + 0.07 * (plus || 0);
+export function eqStats(e) {
+  const m = plusMul(e.plus), out = {};
+  for (const k in e.stats) out[k] = Math.round(e.stats[k] * m);
+  return out;
+}
 export function equipSum(equip) {
   const sum = {};
   for (const k in equip) {
     const e = equip[k];
     if (!e) continue;
-    for (const st in e.stats) sum[st] = (sum[st] || 0) + e.stats[st];
+    const st = eqStats(e);
+    for (const x in st) sum[x] = (sum[x] || 0) + st[x];
   }
   return sum;
+}
+
+// 修炼：攻击/防御/法术修炼按百分比提升对应属性，抗法修炼减少受到的法术伤害。单机版修炼效果全队共享
+export const CULT = [
+  ['atk', '攻击修炼', '全队伤害 +2%/级'],
+  ['def', '防御修炼', '全队防御 +2.5%/级'],
+  ['mag', '法术修炼', '全队灵力 +2%/级（法术伤害与治疗）'],
+  ['res', '抗法修炼', '全队受到的法术伤害 -1.5%/级'],
+];
+export const cultCap = level => Math.min(25, Math.floor(level / 6));
+export function applyCult(st, cult) {
+  if (!cult) return st;
+  st.atk = Math.floor(st.atk * (1 + 0.02 * (cult.atk || 0)));
+  st.def = Math.floor(st.def * (1 + 0.025 * (cult.def || 0)));
+  st.mpow = Math.floor(st.mpow * (1 + 0.02 * (cult.mag || 0)));
+  st.resist = 0.015 * (cult.res || 0);
+  return st;
 }
 
 export function passiveBonus(school, skills) {
@@ -33,7 +58,7 @@ export function passiveBonus(school, skills) {
 }
 
 export function playerStats(S) {
-  return derive(S.attr, S.level, equipSum(S.equip), passiveBonus(S.school, S.skills));
+  return applyCult(derive(S.attr, S.level, equipSum(S.equip), passiveBonus(S.school, S.skills)), S.cult);
 }
 
 // 按加点方案自动生成某等级的属性（伙伴使用）
@@ -56,7 +81,8 @@ export function stdEquip(level) {
   return sum;
 }
 
-export function partnerStats(id, level) {
+// 伙伴星级：每星气血、伤害、防御、灵力 +10%，速度 +4%
+export function partnerStats(id, level, star = 0, cult = null) {
   const p = PARTNERS[id];
   const sc = SCHOOLS[p.school];
   const attr = autoAttr(p.race, level, sc.build);
@@ -64,15 +90,21 @@ export function partnerStats(id, level) {
   const eq = stdEquip(level);
   // 伙伴装备略低于标准
   for (const k in eq) eq[k] = Math.floor(eq[k] * 0.85);
-  return derive(attr, level, eq, passiveBonus(p.school, skills));
+  const st = derive(attr, level, eq, passiveBonus(p.school, skills));
+  if (star) {
+    for (const k of ['maxHp', 'atk', 'def', 'mpow']) st[k] = Math.floor(st[k] * (1 + 0.1 * star));
+    st.spd = Math.floor(st.spd * (1 + 0.04 * star));
+  }
+  return applyCult(st, cult);
 }
 
-// 怪物基础曲线
+// 怪物基础曲线：55 级以后气血与伤害改为线性增长，与人物、装备的成长速度匹配
 export function monsterBase(L) {
+  const k = Math.min(L, 55), x = Math.max(0, L - 55);
   return {
-    maxHp: Math.floor(45 + 11 * L + 0.4 * L * L),
+    maxHp: Math.floor(45 + 11 * k + 0.4 * k * k + 36 * x),
     maxMp: Math.floor(40 + 6 * L),
-    atk: Math.floor(20 + 6 * L + 0.04 * L * L),
+    atk: Math.floor(20 + 6 * k + 0.04 * k * k + 7.5 * x),
     def: Math.floor(5 + 2.8 * L),
     spd: Math.floor(8 + 1.2 * L),
     mpow: Math.floor(12 + 3 * L),
@@ -105,6 +137,8 @@ export function petStats(pet) {
     if (bo.atkPct) out.atk = Math.floor(out.atk * (1 + bo.atkPct));
     if (bo.defPct) out.def = Math.floor(out.def * (1 + bo.defPct));
     if (bo.spdPct) out.spd = Math.floor(out.spd * (1 + bo.spdPct));
+    if (bo.mpowPct) out.mpow = Math.floor(out.mpow * (1 + bo.mpowPct));
+    if (bo.hpPct) out.maxHp = Math.floor(out.maxHp * (1 + bo.hpPct));
   }
   // 属性点加成
   const pa = pet.points || {};

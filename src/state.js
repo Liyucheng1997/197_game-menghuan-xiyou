@@ -1,7 +1,7 @@
 // 存档状态：角色、背包、装备、召唤兽、伙伴
 import { ROLES, RACES, SCHOOLS, SKILLS, MONSTERS, PARTNERS, EQUIP_BASE, EQUIP_NAMES, WEAPON_NAMES, RARITY,
-  BAG_SIZE, PET_MAX, PARTY_MAX, MAX_LEVEL, expNeed, PET_TRAIT_POOL, PET_RARE_POOL } from './data.js';
-import { playerStats, petStats, partnerStats } from './stats.js';
+  BAG_SIZE, PET_MAX, PARTY_MAX, MAX_LEVEL, LEVEL_CAPS, expNeed, PET_TRAIT_POOL, PET_RARE_POOL } from './data.js';
+import { playerStats, petStats, partnerStats, applyCult } from './stats.js';
 import { mkUnit } from './battle-core.js';
 import { rand, randi, pick, shuffle } from './util.js';
 
@@ -24,6 +24,7 @@ export function newGame(role, name) {
     quests: { main: { step: 0, state: 'accept', progress: 0 }, school: null, ghost: null, treasure: null, shimenCount: 0, ghostCount: 0 },
     flags: {}, incense: 0, lastCmd: null, playTime: 0, kills: 0, title: '初出茅庐',
   };
+  migrate(S);
   G.S = S;
   addItem('baozi', 5);
   addItem('zhenlu', 2);
@@ -51,10 +52,30 @@ export function load() {
     if (!raw) return null;
     const S = JSON.parse(raw);
     if (!S || S.v !== 2 || !ROLES[S.role]) return null;
+    migrate(S);
     G.S = S;
     return S;
   } catch (e) { return null; }
 }
+// 补齐 2.3 新增的存档字段（旧存档直接沿用）
+export function migrate(S) {
+  S.jade ??= 0;               // 仙玉
+  S.breaks ??= 0;             // 渡劫突破次数
+  S.cult ??= { atk: 0, def: 0, mag: 0, res: 0 };
+  S.pstar ??= {};             // 伙伴星级
+  S.doubleMs ??= 0;           // 双倍经验剩余时间
+  S.stat ??= { shimen: S.quests?.shimenCount || 0, ghost: S.quests?.ghostCount || 0, pulls: 0, bosses: 0, arenaWin: 0, forge: 0 };
+  S.mall ??= { pity: 0, spent: 0, charged: 0, firstCharge: false, tiersBought: {}, chargeGifts: {}, lvGifts: {}, ach: {}, sign: { last: '', days: 0 } };
+  S.daily ??= { date: '' };
+  S.tower ??= { best: 0 };
+  S.arena ??= { score: 1000, best: 1000, ranks: {} };
+  S.unlocked ??= {};          // 驿站可直达的地图
+  S.quests.event ??= null;    // 天降异象
+  S.quests.chain ??= false;   // 连续任务
+  return S;
+}
+export const levelCap = (S = G.S) => Math.min(MAX_LEVEL, LEVEL_CAPS[S.breaks || 0] ?? MAX_LEVEL);
+
 export function wipe() { try { localStorage.removeItem(SAVE_KEY); } catch (e) { /* 忽略 */ } }
 
 // ---------- 属性 ----------
@@ -86,8 +107,9 @@ export function gainExp(amount) {
   const S = G.S;
   const out = { levels: 0 };
   if (S.level >= MAX_LEVEL) return out;
+  const cap = levelCap(S);
   S.exp += Math.floor(amount);
-  while (S.level < MAX_LEVEL && S.exp >= expNeed(S.level)) {
+  while (S.level < cap && S.exp >= expNeed(S.level)) {
     S.exp -= expNeed(S.level);
     S.level++;
     for (const k in S.attr) S.attr[k] += 1;
@@ -99,6 +121,8 @@ export function gainExp(amount) {
     const st = playerStats(S);
     S.hp = st.maxHp; S.mp = st.maxMp;
   }
+  // 瓶颈期经验继续储存（最多 5 倍），突破后一口气升级
+  if (S.level >= cap && S.level < MAX_LEVEL) { out.capped = true; S.exp = Math.min(S.exp, expNeed(S.level) * 5); }
   if (S.level >= MAX_LEVEL) S.exp = 0;
   return out;
 }
@@ -155,7 +179,7 @@ export function rollRarity(bias = 0) {
   if (r < 0.4 + bias) return 1;
   return 0;
 }
-export function makeEquip(slot, tier, wtype, rarity = 0) {
+export function makeEquip(slot, tier, wtype, rarity = 0, plus = 0) {
   const base = EQUIP_BASE[slot](tier);
   const stats = {};
   const jitter = rarity === 0 ? 1 : 0.95 + Math.random() * 0.25;
@@ -163,7 +187,7 @@ export function makeEquip(slot, tier, wtype, rarity = 0) {
   const pool = shuffle(Object.keys(BONUS_AMT).filter(k => !(k in base)));
   for (let i = 0; i < rarity && i < pool.length; i++) stats[pool[i]] = Math.round(BONUS_AMT[pool[i]](tier) * rand(0.6, 1.2));
   const name = slot === 'weapon' ? WEAPON_NAMES[wtype][tier] : EQUIP_NAMES[slot][tier];
-  return { uid: nextUid(), slot, tier, wtype: slot === 'weapon' ? wtype : null, name, stats, rarity, req: tier * 10, price: Math.floor(70 * (tier + 1) ** 2 * (1 + rarity * 0.6)) };
+  return { uid: nextUid(), slot, tier, wtype: slot === 'weapon' ? wtype : null, name, stats, rarity, plus, req: tier * 10, price: Math.floor(70 * (tier + 1) ** 2 * (1 + rarity * 0.6)) };
 }
 export function randomDrop(tier, bias = 0) {
   const slot = pick(['weapon', 'helm', 'neck', 'armor', 'belt', 'boots']);
@@ -199,6 +223,14 @@ export function rarityColor(r) { return RARITY[r || 0].color; }
 // ---------- 召唤兽 ----------
 export function makePet(mid, level, baby = false) {
   const m = MONSTERS[mid];
+  if (m.shenshou) {
+    // 神兽：成长极高，自带全部高级技能
+    const skills = [...new Set([...(m.skills || []), ...(m.traits || [])])];
+    const pet = { uid: nextUid(), mid, name: m.name, level, exp: 0, growth: +rand(1.3, 1.36).toFixed(3), baby: true, shenshou: true, skills, hp: 1, mp: 1 };
+    const ps = petStats(pet);
+    pet.hp = ps.maxHp; pet.mp = ps.maxMp;
+    return pet;
+  }
   const growth = +(baby ? rand(1.1, 1.24) : rand(0.92, 1.06)).toFixed(3);
   const skills = [...new Set([...(m.skills || []).filter(s => SKILLS[s]?.pet), ...(m.traits || [])])];
   const extra = baby ? randi(1, 2) : (Math.random() < 0.3 ? 1 : 0);
@@ -249,27 +281,29 @@ export function allyUnits() {
   const role = ROLES[S.role];
   const me = mkUnit({
     side: 'ally', kind: 'player', name: S.name, level: S.level, hp: Math.max(1, S.hp), maxHp: st.maxHp, mp: S.mp, maxMp: st.maxMp,
-    atk: st.atk, def: st.def, spd: st.spd, mpow: st.mpow, skills: schoolActives(S.school, S.skills), traits: [],
+    atk: st.atk, def: st.def, spd: st.spd, mpow: st.mpow, resist: st.resist, skills: schoolActives(S.school, S.skills), traits: [],
     look: role.look, weapon: role.weapon, gender: role.gender, slot: 2, ai: S.school ? SCHOOLS[S.school].role : 'phys',
   });
   units.push(me);
   S.party.forEach((pid, i) => {
     const p = PARTNERS[pid];
-    const ps = partnerStats(pid, S.level);
+    const ps = partnerFull(pid);
     const lvl = S.level;
-    const sk = SCHOOLS[p.school].skills.map(id => ({ id, lv: lvl }));
-    units.push(mkUnit({ side: 'ally', kind: 'partner', pid, name: p.name, level: lvl, hp: ps.maxHp, maxHp: ps.maxHp, mp: ps.maxMp, maxMp: ps.maxMp,
-      atk: ps.atk, def: ps.def, spd: ps.spd, mpow: ps.mpow, skills: sk, traits: [], look: p.look, weapon: p.look.weapon, slot: SLOT_ORDER[i + 1], ai: SCHOOLS[p.school].role }));
+    const star = S.pstar?.[pid] || 0;
+    const sk = SCHOOLS[p.school].skills.map(id => ({ id, lv: lvl + star * 3 }));
+    units.push(mkUnit({ side: 'ally', kind: 'partner', pid, star, name: p.name, level: lvl, hp: ps.maxHp, maxHp: ps.maxHp, mp: ps.maxMp, maxMp: ps.maxMp,
+      atk: ps.atk, def: ps.def, spd: ps.spd, mpow: ps.mpow, resist: ps.resist, skills: sk, traits: [], look: p.look, weapon: p.look.weapon, slot: SLOT_ORDER[i + 1], ai: SCHOOLS[p.school].role }));
   });
   const pet = activePet();
   if (pet && pet.hp > 0) units.push(petUnit(pet, me));
   return units;
 }
+export const partnerFull = pid => partnerStats(pid, G.S.level, G.S.pstar?.[pid] || 0, G.S.cult);
 export function petUnit(pet, owner) {
-  const ps = petStats(pet);
+  const ps = applyCult(petStats(pet), G.S.cult);
   const m = MONSTERS[pet.mid];
   return mkUnit({ side: 'ally', kind: 'pet', petUid: pet.uid, name: pet.name, level: pet.level, hp: Math.max(1, Math.min(pet.hp, ps.maxHp)), maxHp: ps.maxHp, mp: Math.min(pet.mp, ps.maxMp), maxMp: ps.maxMp,
-    atk: ps.atk, def: ps.def, spd: ps.spd, mpow: ps.mpow, skills: pet.skills.filter(s => SKILLS[s]?.kind !== 'trait').map(id => ({ id, lv: pet.level })),
+    atk: ps.atk, def: ps.def, spd: ps.spd, mpow: ps.mpow, resist: ps.resist, skills: pet.skills.filter(s => SKILLS[s]?.kind !== 'trait').map(id => ({ id, lv: pet.level })),
     traits: pet.skills.filter(s => SKILLS[s]?.kind === 'trait'), look: m.look, mid: pet.mid, ghost: !!m.ghost, slot: owner.slot, ownerUid: owner.uid, row: 'back', ai: 'pet', baby: pet.baby });
 }
 export function syncFromBattle(units) {

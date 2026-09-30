@@ -1,8 +1,10 @@
 // 游戏数据：种族、角色、门派、技能、物品、装备、怪物、伙伴
-export const MAX_LEVEL = 69;
-export const PET_MAX = 4;
+export const MAX_LEVEL = 150;
+// 等级瓶颈：69/89/109/129 级需在长安城太白金星处渡劫突破后才能继续升级
+export const LEVEL_CAPS = [69, 89, 109, 129, 150];
+export const PET_MAX = 6;
 export const PARTY_MAX = 3;
-export const BAG_SIZE = 30;
+export const BAG_SIZE = 42;
 
 export const ATTRS = [
   ['con', '体质', '提升气血'],
@@ -39,14 +41,14 @@ export const ROLES = {
 };
 
 export const WEAPON_NAMES = {
-  sword: ['青铜短剑', '铁齿剑', '吴越剑', '青锋剑', '龙泉剑', '黄金剑', '游龙剑'],
-  fan: ['折扇', '铁骨扇', '精钢扇', '铁面扇', '百折扇', '劈水扇', '神火扇'],
-  ring: ['黄铜圈', '精钢日月圈', '离情环', '金刺轮', '风火圈', '赤炎环', '蛇形月'],
-  whip: ['牛皮鞭', '牛筋鞭', '乌龙鞭', '钢结鞭', '蛇骨鞭', '玉竹金铃', '青藤柳叶鞭'],
-  spear: ['红缨枪', '曲尖枪', '锯齿矛', '乌金三叉戟', '火焰枪', '墨杆金钩', '玄铁矛'],
-  ribbon: ['五色缎带', '幻彩银纱', '金丝彩带', '无极丝', '天蚕丝带', '云龙绸带', '七彩罗刹'],
-  axe: ['青铜斧', '开山斧', '双面斧', '双弦钺', '精钢禅钺', '黄金钺', '乌金鬼头镰'],
-  claw: ['铁爪', '天狼爪', '幽冥鬼爪', '青龙牙', '勾魂爪', '玄冰刺', '青刚刺'],
+  sword: ['青铜短剑', '铁齿剑', '吴越剑', '青锋剑', '龙泉剑', '黄金剑', '游龙剑', '北斗七星剑', '碧玉剑', '鱼肠', '倚天', '湛卢', '魏武青虹', '灵犀神剑', '四法青云', '霜冷九州'],
+  fan: ['折扇', '铁骨扇', '精钢扇', '铁面扇', '百折扇', '劈水扇', '神火扇', '阴风扇', '风云雷电', '太极', '玉龙', '秋风', '画龙点睛', '秋水人家', '逍遥江湖', '浩气长舒'],
+  ring: ['黄铜圈', '精钢日月圈', '离情环', '金刺轮', '风火圈', '赤炎环', '蛇形月', '子母双月', '斜月狼牙', '如意', '乾坤', '月光双环', '别情离恨', '金玉双环', '九天金线', '无关风月'],
+  whip: ['牛皮鞭', '牛筋鞭', '乌龙鞭', '钢结鞭', '蛇骨鞭', '玉竹金铃', '青藤柳叶鞭', '雷鸣嗜血鞭', '混元金钩', '龙筋拂尘', '百花', '吹雪', '游龙惊鸿', '仙人指路', '血之刺藤', '牧云清歌'],
+  spear: ['红缨枪', '曲尖枪', '锯齿矛', '乌金三叉戟', '火焰枪', '墨杆金钩', '玄铁矛', '金蛇信', '丈八点钢矛', '暗夜', '梨花', '霹雳', '刑天之逆', '五虎断魂', '飞龙在天', '天龙破城'],
+  ribbon: ['五色缎带', '幻彩银纱', '金丝彩带', '无极丝', '天蚕丝带', '云龙绸带', '七彩罗刹', '缚神绫', '九天仙绫', '彩虹', '流云', '碧波', '秋水落霞', '晃金仙绳', '此最相思', '揽月摘星'],
+  axe: ['青铜斧', '开山斧', '双面斧', '双弦钺', '精钢禅钺', '黄金钺', '乌金鬼头镰', '狂魔镰', '恶龙之齿', '破魄', '肃魂', '无敌', '五丁开山', '元神禁锢', '护法灭魔', '碧血干戚'],
+  claw: ['铁爪', '天狼爪', '幽冥鬼爪', '青龙牙', '勾魂爪', '玄冰刺', '青刚刺', '华光刺', '龙鳞刺', '撕天', '毒牙', '胭脂', '九阴勾魂', '雪蚕之刺', '贵霜之牙', '忘川三途'],
 };
 export const WEAPON_TYPE_NAMES = { sword: '剑', fan: '扇', ring: '环', whip: '鞭', spear: '枪', ribbon: '飘带', axe: '斧钺', claw: '爪刺' };
 
@@ -54,13 +56,15 @@ export const SLOTS = [
   ['weapon', '武器'], ['helm', '头盔'], ['neck', '项链'], ['armor', '衣服'], ['belt', '腰带'], ['boots', '鞋子'],
 ];
 export const EQUIP_NAMES = {
-  helm: ['方巾', '布帽', '面具', '纶巾', '缨络丝带', '羊角盔', '水晶帽'],
-  armor: ['布衣', '皮衣', '鳞甲', '锁子甲', '紧身衣', '钢甲', '夜魔披风'],
-  neck: ['护身符', '五色飞石', '珍珠链', '骷髅吊坠', '苍魂珠', '江湖夜雨', '九宫坠'],
-  belt: ['腰带', '缎带', '银腰带', '水晶腰带', '琥珀腰链', '白面狼牙', '乱牙咬'],
-  boots: ['布鞋', '牛皮靴', '马靴', '侠客履', '神行靴', '绿靴', '追星踏月'],
+  helm: ['方巾', '布帽', '面具', '纶巾', '缨络丝带', '羊角盔', '水晶帽', '乾坤帽', '黑魔冠', '白玉龙冠', '水晶夔帽', '翡翠曜冠', '金丝黑玉冠', '白玉琉璃冠', '兽鬼珐琅面', '紫金磐龙冠'],
+  armor: ['布衣', '皮衣', '鳞甲', '锁子甲', '紧身衣', '钢甲', '夜魔披风', '龙骨甲', '死亡斗篷', '神谕披风', '珊瑚玉衣', '金蚕披风', '乾坤护心甲', '蝉翼金丝甲', '金丝鱼鳞甲', '紫金磐龙甲'],
+  neck: ['护身符', '五色飞石', '珍珠链', '骷髅吊坠', '苍魂珠', '江湖夜雨', '九宫坠', '荧光坠子', '高速之星', '风月宝链', '八卦坠', '碧水青龙', '鬼牙攫魂', '万里卷云', '疾风之铃', '七彩玲珑'],
+  belt: ['腰带', '缎带', '银腰带', '水晶腰带', '琥珀腰链', '白面狼牙', '乱牙咬', '魔童大牙', '攫魂铃', '双魂引', '兽王腰带', '百窜云', '八卦锻带', '圣王坠', '幻彩玉带', '磐龙凤翔带'],
+  boots: ['布鞋', '牛皮靴', '马靴', '侠客履', '神行靴', '绿靴', '追星踏月', '九州履', '万里追云履', '踏雪无痕', '平步青云', '追云逐电', '乾坤天罡履', '七星逐月靴', '碧霞彩云履', '金丝逐日履'],
 };
-// 每档装备的基础属性（tier 0..6，需求等级 tier*10）
+// 每档装备的基础属性（tier 0..15，需求等级 tier*10）
+export const MAX_TIER = 15;
+export const TOWER_MAX = 125;   // 镇妖塔层数
 export const EQUIP_BASE = {
   weapon: t => ({ atk: 12 + t * 26 }),
   helm: t => ({ def: 4 + t * 9, mp: 10 + t * 12 }),
@@ -182,9 +186,26 @@ export const SKILLS = {
   qugui: { name: '驱鬼', kind: 'trait', pet: true, desc: '攻击鬼魂类目标时伤害提升，且使其无法复活。' },
   guihun: { name: '鬼魂术', kind: 'trait', pet: true, desc: '倒地后3回合复活（每场一次）。' },
   mingsi: { name: '冥思', kind: 'trait', pet: true, desc: '每回合恢复少量魔法。' },
+  // 高级技能（高级魔兽要诀、神兽）
+  gj_bisha: { name: '高级必杀', kind: 'trait', pet: true, rare: true, desc: '物理攻击有30%几率造成1.6倍暴击。' },
+  gj_lianji: { name: '高级连击', kind: 'trait', pet: true, rare: true, desc: '物理攻击有50%几率追加一次攻击。' },
+  gj_xixue: { name: '高级吸血', kind: 'trait', pet: true, rare: true, desc: '物理攻击时吸取伤害的40%。' },
+  gj_fanji: { name: '高级反击', kind: 'trait', pet: true, rare: true, desc: '受到物理攻击时有45%几率反击。' },
+  gj_qiangli: { name: '高级强力', kind: 'trait', pet: true, rare: true, bonus: { atkPct: 0.22 }, desc: '伤害提升22%。' },
+  gj_fangyu: { name: '高级防御', kind: 'trait', pet: true, rare: true, bonus: { defPct: 0.28 }, desc: '防御提升28%。' },
+  gj_minjie: { name: '高级敏捷', kind: 'trait', pet: true, rare: true, bonus: { spdPct: 0.28 }, desc: '速度提升28%。' },
+  gj_shenyou: { name: '高级神佑复生', kind: 'trait', pet: true, rare: true, desc: '倒地时有45%几率满血复活。' },
+  gj_zaisheng: { name: '高级再生', kind: 'trait', pet: true, rare: true, desc: '每回合恢复较多气血。' },
+  gj_mingsi: { name: '高级冥思', kind: 'trait', pet: true, rare: true, desc: '每回合恢复较多魔法。' },
+  fs_lianji: { name: '法术连击', kind: 'trait', pet: true, rare: true, desc: '施放伤害法术后有25%几率再施放一次（七成威力）。' },
+  fs_baoji: { name: '法术暴击', kind: 'trait', pet: true, rare: true, desc: '法术伤害有15%几率造成1.5倍暴击。' },
+  mozhixin: { name: '魔之心', kind: 'trait', pet: true, rare: true, bonus: { mpowPct: 0.2 }, desc: '灵力提升20%。' },
+  yeshen: { name: '夜战', kind: 'trait', pet: true, bonus: { hpPct: 0.08 }, desc: '气血提升8%。' },
 };
-export const PET_TRAIT_POOL = ['bisha', 'lianji', 'xixue', 'fanji', 'qiangli', 'fangyu', 'minjie', 'zaisheng', 'du', 'mingsi', 'leiji', 'luoyan', 'shuigong', 'liehuo'];
+export const PET_TRAIT_POOL = ['bisha', 'lianji', 'xixue', 'fanji', 'qiangli', 'fangyu', 'minjie', 'zaisheng', 'du', 'mingsi', 'leiji', 'luoyan', 'shuigong', 'liehuo', 'yeshen'];
 export const PET_RARE_POOL = ['shenyou', 'benlei', 'shuiman', 'taishan', 'diyu', 'qugui'];
+// 高级魔兽要诀的技能池
+export const PET_HIGH_POOL = ['gj_bisha', 'gj_lianji', 'gj_xixue', 'gj_fanji', 'gj_qiangli', 'gj_fangyu', 'gj_minjie', 'gj_shenyou', 'gj_zaisheng', 'gj_mingsi', 'fs_lianji', 'fs_baoji', 'mozhixin', 'benlei', 'shuiman', 'taishan', 'diyu'];
 
 // ---------------- 物品 ----------------
 export const ITEMS = {
@@ -200,8 +221,25 @@ export const ITEMS = {
   wanyao: { name: '宠物口粮', icon: '🦴', type: 'petfood', price: 300, desc: '使出战召唤兽获得大量经验。' },
   xiulian: { name: '修炼果', icon: '🍑', type: 'point', price: 0, desc: '食用后获得2点属性点。' },
   jinke: { name: '金柳露', icon: '🧪', type: 'petgrow', price: 0, desc: '使出战召唤兽成长提高0.01（上限1.30）。' },
+  // 高级补给
+  dahuan: { name: '大还丹', icon: '🔴', type: 'food', hp: 3000, price: 1500, desc: '恢复3000点气血。' },
+  xianlu: { name: '蟠桃仙露', icon: '🍯', type: 'food', hp: 6500, price: 3200, desc: '恢复6500点气血。' },
+  xianniang: { name: '天香仙酿', icon: '🍷', type: 'food', mp: 1200, price: 1300, desc: '恢复1200点魔法。' },
+  jiuzhuan: { name: '九转还魂丹', icon: '💫', type: 'revive', revive: 1, price: 3000, desc: '战斗中复活一名倒地单位并恢复全部气血。' },
+  // 养成材料（多由仙玉、活动获得）
+  qianghua: { name: '强化石', icon: '💎', type: 'mat', price: 0, desc: '装备强化的材料。在人物界面「装备强化」中使用。' },
+  baohu: { name: '强化保护符', icon: '🛡️', type: 'mat', price: 0, desc: '强化+7以上失败时，保护装备不掉级。' },
+  shoujue: { name: '魔兽要诀', icon: '📘', type: 'petbook', price: 0, desc: '让出战召唤兽学会书中记载的技能。技能越多，越容易顶替掉已有技能。' },
+  gj_shoujue: { name: '高级魔兽要诀', icon: '📕', type: 'petbook', price: 0, desc: '记载着高级技能的秘籍，让出战召唤兽学会书中的高级技能。' },
+  jinke2: { name: '超级金柳露', icon: '⚗️', type: 'petgrow', grow: 0.02, cap: 1.4, price: 0, desc: '使出战召唤兽成长提高0.02（上限1.40）。' },
+  shuangbei: { name: '双倍经验丹', icon: '🌟', type: 'double', price: 0, desc: '服用后60分钟内获得的经验翻倍（可叠加时长）。' },
+  xinwu: { name: '伙伴信物', icon: '🎎', type: 'mat', price: 0, desc: '伙伴升星的材料。在队伍界面为伙伴升星。' },
+  shenshou_sp: { name: '神兽碎片', icon: '✨', type: 'mat', price: 0, desc: '集齐100片可在藏宝阁兑换一只神兽。' },
+  gj_baotu: { name: '高级藏宝图', icon: '📜', type: 'map', price: 0, desc: '记载着上古宝藏，挖出神兽、高级兽决、仙玉的几率很高，也可能惊动妖王。' },
+  jingyan: { name: '修炼秘籍', icon: '📗', type: 'expbook', price: 0, desc: '阅读后获得相当于当前等级升级所需30%的经验。' },
 };
-export const DRUG_SHOP = ['baozi', 'kaoya', 'jinchuang', 'zhenlu', 'nverhong', 'sheli'];
+export const DRUG_SHOP = ['baozi', 'kaoya', 'jinchuang', 'dahuan', 'zhenlu', 'nverhong', 'xianniang', 'sheli'];
+export const HIGH_DRUG_SHOP = ['jinchuang', 'dahuan', 'xianlu', 'nverhong', 'xianniang', 'sheli', 'jiuzhuan', 'feixing', 'sheyao'];
 export const GROCERY_SHOP = ['baozi', 'zhenlu', 'sheyao', 'feixing', 'wanyao'];
 
 // ---------------- 怪物 ----------------
@@ -232,9 +270,43 @@ export const MONSTERS = {
   julishenyuan: { name: '巨力神猿', lv: [40, 52], look: { shape: 'quad', kind: 'monkey', c1: '#a8703a', c2: '#f0d0a0' }, mul: { atk: 1.3, hp: 1.2 }, traits: ['qiangli', 'bisha'], pet: 45, drops: [['jinchuang', 0.08]] },
   changmei: { name: '长眉灵猴', lv: [40, 50], look: { shape: 'quad', kind: 'monkey', c1: '#d8d0c0', c2: '#fff4e8' }, mul: { mpow: 1.35, spd: 1.2 }, skills: ['benlei', 'leiji'], traits: ['minjie'], pet: 45, drops: [['nverhong', 0.08]] },
   tianjiang: { name: '天将', lv: [44, 55], look: { shape: 'human', skin: '#ffe0c8', hair: '#2a2a3a', hairStyle: 'helmet', cloth: '#d8b040', cloth2: '#fff4c0', belt: '#a83a2a', pants: '#8a6a2a', shoe: '#4a3a1a', ribbon: '#e8403a', weapon: 'spear' }, mul: { def: 1.3, hp: 1.2 }, skills: ['tlz'], traits: ['fangyu'], pet: 45, drops: [['jinchuang', 0.08]] },
+  // ---------- 50 级以后的新区域 ----------
+  // 东海龙宫
+  yecha: { name: '巡海夜叉', lv: [50, 66], look: { shape: 'human', skin: '#6a9ab8', hair: '#1a3a5a', hairStyle: 'demon', cloth: '#2a5a7a', cloth2: '#a8e0f0', belt: '#1a2a3a', pants: '#1a3a4a', shoe: '#0a1a2a', ribbon: '#a8e0f0', weapon: 'spear' }, mul: { atk: 1.2, spd: 1.1 }, traits: ['lianji', 'bisha'], pet: 55, drops: [['dahuan', 0.05]] },
+  bangjing: { name: '蚌精', lv: [50, 66], look: { shape: 'turtle', c1: '#f0b8c8', c2: '#fff0e8' }, mul: { hp: 1.4, def: 1.5, spd: 0.6 }, skills: ['shuigong'], traits: ['fangyu', 'zaisheng'], pet: 55, drops: [['xianniang', 0.05]] },
+  jiaoren: { name: '鲛人', lv: [52, 66], look: { shape: 'human', skin: '#d8f0f0', hair: '#3ab8a8', hairStyle: 'longhair', gender: 'f', cloth: '#3aa8b8', cloth2: '#e0ffff', belt: '#1a6a7a', pants: '#8ad8d8', shoe: '#1a5a6a', ribbon: '#ffffff', weapon: 'ribbon' }, mul: { mpow: 1.35, spd: 1.1 }, skills: ['shuiman', 'shuigong'], traits: ['mingsi'], pet: 55, drops: [['xianniang', 0.06]] },
+  guijiang: { name: '龟将', lv: [52, 66], look: { shape: 'turtle', c1: '#3a7a5a', c2: '#d8c88a' }, mul: { hp: 1.3, def: 1.6, atk: 1.1, spd: 0.7 }, traits: ['fanji', 'fangyu'], pet: 55, drops: [['dahuan', 0.05]] },
+  // 北俱芦洲
+  xuelang: { name: '雪狼', lv: [62, 80], look: { shape: 'quad', kind: 'fox', c1: '#e8eef8', c2: '#a8b8d0' }, mul: { atk: 1.15, spd: 1.25 }, traits: ['lianji', 'minjie'], pet: 65, drops: [['dahuan', 0.05]] },
+  bingyao: { name: '冰妖', lv: [62, 80], look: { shape: 'ghost', c1: '#c8f0ff', c2: '#3a8ad8' }, mul: { mpow: 1.25 }, skills: ['shuiman'], traits: ['guihun', 'mingsi'], pet: 65, ghost: true, drops: [['xianniang', 0.06]] },
+  xueguai: { name: '雪怪', lv: [64, 80], look: { shape: 'quad', kind: 'bear', c1: '#f4f8ff', c2: '#9ab0c8' }, mul: { hp: 1.5, def: 1.3, atk: 1.15, spd: 0.8 }, traits: ['fanji', 'qiangli'], pet: 65, drops: [['dahuan', 0.06]] },
+  fengbo: { name: '风伯', lv: [64, 80], look: { shape: 'human', skin: '#e8d8c0', hair: '#c8d8e8', hairStyle: 'oldman', cloth: '#6a8ab8', cloth2: '#e8f0ff', belt: '#3a4a7a', pants: '#4a5a8a', shoe: '#2a3a5a', ribbon: '#e8f0ff', weapon: 'fan', beard: true }, mul: { mpow: 1.2, spd: 1.15 }, skills: ['benlei', 'leiji'], traits: ['minjie'], pet: 65, drops: [['xianniang', 0.06]] },
+  // 火焰山
+  huojing: { name: '火精', lv: [76, 92], look: { shape: 'ghost', c1: '#ffb040', c2: '#e8401a' }, mul: { mpow: 1.3 }, skills: ['diyu', 'liehuo'], traits: [], pet: 78, drops: [['xianniang', 0.06]] },
+  niujiang: { name: '牛魔将', lv: [76, 92], look: { shape: 'human', skin: '#7a4a2a', hair: '#2a1a0a', hairStyle: 'bull', cloth: '#8a2a1a', cloth2: '#f0a030', belt: '#2a1a0a', pants: '#4a1a0a', shoe: '#1a0a0a', ribbon: '#f0a030', weapon: 'axe', big: true }, mul: { atk: 1.2, hp: 1.3, spd: 0.85 }, traits: ['qiangli', 'fanji'], pet: 78, drops: [['dahuan', 0.06]] },
+  yanhu: { name: '炎狐', lv: [78, 92], look: { shape: 'quad', kind: 'fox', c1: '#ff6a2a', c2: '#ffe0a0' }, mul: { mpow: 1.15, spd: 1.3 }, skills: ['liehuo'], traits: ['minjie', 'lianji'], pet: 78, drops: [['xianniang', 0.06]] },
+  // 无底洞
+  shujing: { name: '鼠精', lv: [90, 108], look: { shape: 'quad', kind: 'mouse', c1: '#8a8a9a', c2: '#f0d8e0' }, mul: { atk: 1.1, spd: 1.3 }, traits: ['du', 'lianji', 'xixue'], pet: 90, drops: [['xianlu', 0.04]] },
+  xiezi: { name: '蝎子精', lv: [90, 108], look: { shape: 'spider', c1: '#a83a1a', c2: '#f0c040' }, mul: { atk: 1.2 }, traits: ['du', 'bisha'], pet: 90, drops: [['xianlu', 0.04]] },
+  zhizhunv: { name: '蛛女', lv: [92, 108], look: { shape: 'human', skin: '#f4e4f0', hair: '#4a1a5a', hairStyle: 'twin', gender: 'f', cloth: '#6a2a7a', cloth2: '#f0a0e0', belt: '#3a0a4a', pants: '#8a4a9a', shoe: '#2a0a3a', ribbon: '#f0a0e0', weapon: 'whip' }, mul: { mpow: 1.25 }, skills: ['hqmm', 'taishan'], traits: ['du'], pet: 90, drops: [['xianniang', 0.06]] },
+  kuloujiang: { name: '骷髅将军', lv: [92, 108], look: { shape: 'human', skeleton: true, skin: '#f4f0e0', hair: '#8a2a2a', hairStyle: 'helmet', cloth: '#4a3a3a', cloth2: '#a86a4a', belt: '#2a1a1a', pants: '#3a2a2a', shoe: '#1a1a1a', ribbon: '#c83a2a', weapon: 'spear' }, mul: { atk: 1.2, hp: 1.2 }, traits: ['guihun', 'bisha', 'fanji'], pet: 90, ghost: true, drops: [['xianlu', 0.04]] },
+  // 南天门
+  yaobing: { name: '妖兵', lv: [104, 120], look: { shape: 'human', skin: '#9ab870', hair: '#3a2a1a', hairStyle: 'demon', cloth: '#4a3a2a', cloth2: '#a8905a', belt: '#2a1a0a', pants: '#3a2a1a', shoe: '#1a1a0a', ribbon: '#c83a2a', weapon: 'saber' }, mul: { atk: 1.2, hp: 1.2 }, traits: ['bisha', 'lianji'], pet: 105, drops: [['xianlu', 0.05]] },
+  tianbing: { name: '天兵', lv: [104, 120], look: { shape: 'human', skin: '#ffe0c8', hair: '#2a2a3a', hairStyle: 'helmet', cloth: '#b8c8d8', cloth2: '#f0f4ff', belt: '#3a5a8a', pants: '#6a7a9a', shoe: '#2a3a5a', ribbon: '#3a8ae8', weapon: 'spear' }, mul: { def: 1.35, hp: 1.25 }, skills: ['tlz'], traits: ['fangyu'], pet: 105, drops: [['xianlu', 0.05]] },
+  leigong: { name: '雷公', lv: [106, 120], look: { shape: 'human', skin: '#6a7ab8', hair: '#e8d040', hairStyle: 'demon', cloth: '#3a3a6a', cloth2: '#e8d040', belt: '#1a1a3a', pants: '#2a2a4a', shoe: '#1a1a2a', ribbon: '#e8d040', weapon: 'axe' }, mul: { mpow: 1.35 }, skills: ['benlei', 'wlhd'], traits: ['minjie'], pet: 105, drops: [['xianniang', 0.06]] },
+  jinjia: { name: '金甲神将', lv: [106, 120], look: { shape: 'human', skin: '#ffe0c0', hair: '#2a2a2a', hairStyle: 'helmet', cloth: '#e8c040', cloth2: '#fff4b0', belt: '#a83a2a', pants: '#a87a2a', shoe: '#5a3a1a', ribbon: '#e8403a', weapon: 'axe', big: true }, mul: { atk: 1.25, def: 1.3, hp: 1.35, spd: 0.85 }, traits: ['fanji', 'qiangli'], pet: 105, drops: [['xianlu', 0.05]] },
+  // 幽冥地府
+  yinbing: { name: '阴兵', lv: [118, 136], look: { shape: 'human', skeleton: true, skin: '#e0e8e0', hair: '#3a4a5a', hairStyle: 'helmet', cloth: '#3a4a5a', cloth2: '#8a9aaa', belt: '#1a2a3a', pants: '#2a3a4a', shoe: '#1a1a2a', ribbon: '#6a8a9a', weapon: 'spear' }, mul: { atk: 1.2 }, traits: ['guihun', 'bisha'], pet: 120, ghost: true, drops: [['xianlu', 0.05]] },
+  gouhun: { name: '勾魂使者', lv: [118, 136], look: { shape: 'ghost', c1: '#4a4a5a', c2: '#a8ff8a' }, mul: { mpow: 1.35 }, skills: ['ylnl', 'sfd'], traits: ['guihun'], pet: 120, ghost: true, drops: [['xianniang', 0.06]] },
+  wuchang: { name: '无常', lv: [120, 136], look: { shape: 'human', skin: '#f4f4f4', hair: '#1a1a1a', hairStyle: 'hat', cloth: '#f4f4f4', cloth2: '#3a3a3a', belt: '#1a1a1a', pants: '#e0e0e0', shoe: '#1a1a1a', ribbon: '#c83a2a', weapon: 'staff' }, mul: { spd: 1.25, mpow: 1.2 }, skills: ['pgl', 'hqmm'], traits: ['guihun', 'minjie'], pet: 120, ghost: true, drops: [['xianniang', 0.06]] },
+  youhun: { name: '幽魂', lv: [120, 136], look: { shape: 'ghost', c1: '#d8c8ff', c2: '#6a3aa8' }, mul: { mpow: 1.3, spd: 1.15 }, skills: ['benlei', 'sfd'], traits: ['guihun', 'mingsi'], pet: 120, ghost: true, drops: [['xianniang', 0.06]] },
+  // 小雷音寺
+  yaoseng: { name: '妖僧', lv: [132, 150], look: { shape: 'human', skin: '#e8c8a0', hair: '#2a2a2a', hairStyle: 'bald', cloth: '#c89a3a', cloth2: '#8a2a1a', belt: '#8a2a1a', pants: '#a8803a', shoe: '#3a2a1a', ribbon: '#8a2a1a', weapon: 'staff' }, mul: { hp: 1.3, mpow: 1.25 }, skills: ['rgh', 'sxf'], traits: ['zaisheng'], pet: 135, drops: [['xianlu', 0.05]] },
+  jingang: { name: '伪金刚', lv: [132, 150], look: { shape: 'human', skin: '#e8c060', hair: '#2a2a2a', hairStyle: 'bald', cloth: '#e8a030', cloth2: '#c83a2a', belt: '#8a2a1a', pants: '#c8802a', shoe: '#5a3a1a', ribbon: '#c83a2a', weapon: 'axe', big: true }, mul: { atk: 1.3, hp: 1.4, def: 1.3, spd: 0.8 }, traits: ['gj_fanji', 'qiangli'], pet: 135, drops: [['xianlu', 0.05]] },
+  mohou: { name: '魔猴', lv: [134, 150], look: { shape: 'quad', kind: 'monkey', c1: '#5a4a6a', c2: '#d0c0e0' }, mul: { atk: 1.25, spd: 1.3 }, traits: ['gj_lianji', 'bisha'], pet: 135, drops: [['xianlu', 0.05]] },
   // 抓鬼 / 特殊
-  niutou: { name: '牛头', lv: [1, 69], look: { shape: 'human', skin: '#6a4a3a', hair: '#3a2010', hairStyle: 'bull', cloth: '#3a3a4a', cloth2: '#8a2a2a', belt: '#1a1a1a', pants: '#2a2a3a', shoe: '#1a1a1a', ribbon: '#8a2a2a', weapon: 'axe', big: true }, mul: { atk: 1.15, hp: 1.1 }, traits: ['guihun'], pet: 999, ghost: true },
-  mamian: { name: '马面', lv: [1, 69], look: { shape: 'human', skin: '#8a8a9a', hair: '#2a2a3a', hairStyle: 'horse', cloth: '#3a3a4a', cloth2: '#3a6a8a', belt: '#1a1a1a', pants: '#2a2a3a', shoe: '#1a1a1a', ribbon: '#3a6a8a', weapon: 'spear' }, mul: { spd: 1.1 }, skills: ['leiji'], traits: ['guihun'], pet: 999, ghost: true },
+  niutou: { name: '牛头', lv: [1, 150], look: { shape: 'human', skin: '#6a4a3a', hair: '#3a2010', hairStyle: 'bull', cloth: '#3a3a4a', cloth2: '#8a2a2a', belt: '#1a1a1a', pants: '#2a2a3a', shoe: '#1a1a1a', ribbon: '#8a2a2a', weapon: 'axe', big: true }, mul: { atk: 1.15, hp: 1.1 }, traits: ['guihun'], pet: 999, ghost: true },
+  mamian: { name: '马面', lv: [1, 150], look: { shape: 'human', skin: '#8a8a9a', hair: '#2a2a3a', hairStyle: 'horse', cloth: '#3a3a4a', cloth2: '#3a6a8a', belt: '#1a1a1a', pants: '#2a2a3a', shoe: '#1a1a1a', ribbon: '#3a6a8a', weapon: 'spear' }, mul: { spd: 1.1 }, skills: ['leiji'], traits: ['guihun'], pet: 999, ghost: true },
   // 首领
   shangren: { name: '商人的鬼魂', boss: true, look: { shape: 'human', ghostly: true, skin: '#d8e0ff', hair: '#5a5a7a', hairStyle: 'hat', cloth: '#8a9ab8', cloth2: '#e8e8ff', belt: '#5a5a7a', pants: '#6a6a8a', shoe: '#4a4a6a', ribbon: '#e8e8ff', weapon: 'none' }, mul: { hp: 5.5, atk: 1.15, def: 1.0, mpow: 1.2 }, skills: ['leiji'], traits: [], ghost: true },
   shanzeitou: { name: '山贼头子', boss: true, look: { shape: 'human', skin: '#e0a880', hair: '#1a1010', hairStyle: 'bandana', cloth: '#8a2a2a', cloth2: '#e8b830', belt: '#1a0a0a', pants: '#3a1a1a', shoe: '#1a1010', ribbon: '#e8b830', weapon: 'axe', beard: true, big: true }, mul: { hp: 6, atk: 1.25, def: 1.15 }, skills: ['hsqj'], traits: ['bisha'] },
@@ -242,8 +314,30 @@ export const MONSTERS = {
   cungu: { name: '村姑', boss: true, look: { shape: 'human', skin: '#fff0e8', hair: '#2a1a1a', hairStyle: 'bun', cloth: '#e8a0b0', cloth2: '#fff8f0', belt: '#c86a80', pants: '#f0c8d0', shoe: '#8a4a5a', ribbon: '#ff8aa0', weapon: 'basket', gender: 'f' }, mul: { hp: 8, mpow: 1.3, spd: 1.1 }, skills: ['hqmm', 'pgl'], traits: [] },
   laofu: { name: '老妇', boss: true, look: { shape: 'human', skin: '#f0dcc8', hair: '#e8e8e8', hairStyle: 'bun', cloth: '#6a5a4a', cloth2: '#c8b8a8', belt: '#4a3a2a', pants: '#5a4a3a', shoe: '#2a1a10', ribbon: '#c8b8a8', weapon: 'staff', gender: 'f' }, mul: { hp: 9, mpow: 1.4, def: 1.15 }, skills: ['sfd', 'ylnl'], traits: ['zaisheng'] },
   baigujing: { name: '白骨精', boss: true, look: { shape: 'human', skin: '#f8f8ff', hair: '#e8e8f8', hairStyle: 'fairy', cloth: '#f0f0f8', cloth2: '#6a4a8a', belt: '#3a2a4a', pants: '#d8d8e8', shoe: '#3a2a4a', ribbon: '#8a5ab8', weapon: 'claw', gender: 'f', ghostly: true }, mul: { hp: 12, mpow: 1.5, atk: 1.25, spd: 1.2, def: 1.2 }, skills: ['ylnl', 'sfd', 'hqmm'], traits: ['zaisheng'], ghost: true },
+  // ---------- 七大圣篇首领 ----------
+  hunshi: { name: '混世魔王', boss: true, enrage: true, look: { shape: 'human', skin: '#d8a078', hair: '#1a1010', hairStyle: 'demon', cloth: '#3a2a3a', cloth2: '#c83a2a', belt: '#1a0a0a', pants: '#2a1a2a', shoe: '#1a0a0a', ribbon: '#c83a2a', weapon: 'saber', big: true, beard: true }, mul: { hp: 11, atk: 1.15, def: 1.2, spd: 1.1 }, skills: ['hsqj', 'sb'], traits: ['bisha'] },
+  jiutouchong: { name: '九头虫', boss: true, enrage: true, look: { shape: 'quad', kind: 'dragon', c1: '#8a2a5a', c2: '#ffd040' }, mul: { hp: 12, mpow: 1.35, spd: 1.15 }, skills: ['shuiman', 'ljyj', 'lt'], traits: ['zaisheng'] },
+  jiaomowang: { name: '蛟魔王', boss: true, enrage: true, look: { shape: 'human', skin: '#c8e8e0', hair: '#1a6a6a', hairStyle: 'dragon', cloth: '#1a5a6a', cloth2: '#e8d060', belt: '#0a2a3a', pants: '#1a3a4a', shoe: '#0a1a2a', ribbon: '#e8d060', weapon: 'spear', big: true }, mul: { hp: 12, atk: 1.2, mpow: 1.25, def: 1.2 }, skills: ['elxz', 'lt', 'tlz'], traits: ['fanji'] },
+  honghaier: { name: '红孩儿', boss: true, enrage: true, look: { shape: 'human', skin: '#ffe0c8', hair: '#c82a1a', hairStyle: 'topknot', cloth: '#e83a2a', cloth2: '#ffd040', belt: '#8a1a0a', pants: '#ffb08a', shoe: '#8a2a1a', ribbon: '#ffd040', weapon: 'spear' }, mul: { hp: 12, mpow: 1.4, spd: 1.25 }, skills: ['smzh', 'fszs', 'diyu'], traits: [] },
+  tieshan: { name: '铁扇公主', boss: true, enrage: true, look: { shape: 'human', skin: '#fff0e4', hair: '#1a1a2a', hairStyle: 'bun', gender: 'f', cloth: '#3a8a5a', cloth2: '#f0e0a0', belt: '#1a4a2a', pants: '#a8d8b0', shoe: '#1a3a2a', ribbon: '#f0e0a0', weapon: 'fan' }, mul: { hp: 12, mpow: 1.35, spd: 1.2, def: 1.15 }, skills: ['fszs', 'taishan', 'hqmm'], traits: ['zaisheng'] },
+  niumowang: { name: '魔化牛王', boss: true, enrage: true, look: { shape: 'human', skin: '#6a3a2a', hair: '#1a0a0a', hairStyle: 'bull', cloth: '#1a1a1a', cloth2: '#c83a2a', belt: '#3a0a0a', pants: '#2a1a1a', shoe: '#0a0a0a', ribbon: '#c83a2a', weapon: 'axe', big: true }, mul: { hp: 13, atk: 1.3, def: 1.3, mpow: 1.25 }, skills: ['fszs', 'smzh', 'hsqj'], traits: ['fanji', 'bisha'] },
+  diyong: { name: '地涌夫人', boss: true, enrage: true, look: { shape: 'human', skin: '#fff4f4', hair: '#e8e0f0', hairStyle: 'fairy', gender: 'f', cloth: '#f0c8d8', cloth2: '#8a3a5a', belt: '#5a1a3a', pants: '#e8b8c8', shoe: '#5a1a3a', ribbon: '#8a3a5a', weapon: 'claw', tail: '#c8c0c8' }, mul: { hp: 13, mpow: 1.35, spd: 1.3, atk: 1.15 }, skills: ['tldw', 'hqmm', 'sfd'], traits: ['lianji', 'du'] },
+  pengmowang: { name: '鹏魔王', boss: true, enrage: true, look: { shape: 'human', skin: '#f0d0a0', hair: '#e8b030', hairStyle: 'demon', cloth: '#2a2a3a', cloth2: '#e8b030', belt: '#1a1a1a', pants: '#3a3a4a', shoe: '#1a1a1a', ribbon: '#e8b030', weapon: 'spear', big: true }, mul: { hp: 12, atk: 1.2, spd: 1.3 }, skills: ['yj', 'sb'], traits: ['gj_bisha'] },
+  shituowang: { name: '狮驼王', boss: true, enrage: true, look: { shape: 'human', skin: '#f0c890', hair: '#f08a2a', hairStyle: 'demon', cloth: '#8a5a1a', cloth2: '#f0d060', belt: '#3a2a0a', pants: '#5a3a1a', shoe: '#2a1a0a', ribbon: '#f0d060', weapon: 'axe', big: true }, mul: { hp: 12, atk: 1.15, def: 1.2 }, skills: ['sb', 'hfzr', 'yj'], traits: ['fanji'] },
+  yurongwang: { name: '禺狨王', boss: true, enrage: true, look: { shape: 'quad', kind: 'monkey', c1: '#4a3a5a', c2: '#c8b8e0' }, mul: { hp: 14, atk: 1.25, mpow: 1.35, spd: 1.35 }, skills: ['benlei', 'ylnl', 'sxf'], traits: ['gj_lianji'] },
+  huangmei: { name: '黄眉大王', boss: true, enrage: true, look: { shape: 'human', skin: '#f0d0a0', hair: '#f0c030', hairStyle: 'bald', cloth: '#e8a030', cloth2: '#8a2a1a', belt: '#8a2a1a', pants: '#c8802a', shoe: '#3a2a1a', ribbon: '#f0c030', weapon: 'staff', big: true, beard: true }, mul: { hp: 15, mpow: 1.4, atk: 1.25, def: 1.35 }, skills: ['rgh', 'ylnl', 'rqkq'], traits: ['zaisheng'] },
+  liuer: { name: '六耳猕猴', boss: true, enrage: true, look: { shape: 'quad', kind: 'monkey', c1: '#d8a040', c2: '#fff0c0' }, mul: { hp: 17, atk: 1.4, mpow: 1.4, spd: 1.45, def: 1.4 }, skills: ['hsqj', 'benlei', 'wlhd', 'sxf'], traits: ['gj_lianji', 'gj_bisha'] },
+  // 渡劫心魔：外观与属性在战斗时按玩家本人生成
+  xinmo: { name: '心魔', boss: true, enrage: true, look: { shape: 'human', skin: '#e8d0d8', hair: '#8a1a2a', hairStyle: 'topknot', cloth: '#3a1a4a', cloth2: '#b83a6a', belt: '#1a0a1a', pants: '#2a1a2a', shoe: '#1a0a1a', ribbon: '#ff3a6a', ghostly: true }, mul: {}, skills: [], traits: [] },
+  // ---------- 神兽（祈愿、兑换、首充获得） ----------
+  ss_hu: { name: '超级神虎', shenshou: true, look: { shape: 'quad', kind: 'tiger', c1: '#f8f4e8', c2: '#e8b830' }, mul: { hp: 1.3, atk: 1.45, spd: 1.2, def: 1.2 }, traits: ['gj_bisha', 'gj_lianji', 'gj_qiangli', 'gj_shenyou'], pet: 0 },
+  ss_long: { name: '超级神龙', shenshou: true, look: { shape: 'quad', kind: 'dragon', c1: '#ffd84a', c2: '#ff8a2a' }, mul: { mpow: 1.5, hp: 1.3, spd: 1.2 }, skills: ['benlei', 'shuiman'], traits: ['fs_lianji', 'fs_baoji', 'mozhixin', 'gj_shenyou'], pet: 0 },
+  ss_pao: { name: '超级泡泡', shenshou: true, look: { shape: 'ghost', c1: '#ffc8e8', c2: '#ff6aa8' }, mul: { hp: 1.7, def: 1.5, atk: 1.1 }, traits: ['gj_fangyu', 'gj_zaisheng', 'gj_shenyou', 'gj_fanji', 'gj_mingsi'], pet: 0 },
+  ss_hu2: { name: '超级灵狐', shenshou: true, look: { shape: 'quad', kind: 'fox', c1: '#f4f4ff', c2: '#ff8ad0' }, mul: { atk: 1.35, spd: 1.5, hp: 1.2 }, traits: ['gj_minjie', 'gj_lianji', 'gj_xixue', 'gj_bisha'], pet: 0 },
+  ss_qilin: { name: '超级麒麟', shenshou: true, look: { shape: 'quad', kind: 'tiger', c1: '#6ad0c8', c2: '#ffe060' }, mul: { mpow: 1.45, hp: 1.35, spd: 1.25, def: 1.25 }, skills: ['diyu', 'taishan'], traits: ['fs_lianji', 'mozhixin', 'gj_minjie'], pet: 0 },
   xiaobailong: { name: '小白龙', look: { shape: 'quad', kind: 'dragon', c1: '#f0f4ff', c2: '#8ad0ff' }, mul: { mpow: 1.3, hp: 1.2, spd: 1.1 }, skills: ['shuiman'], traits: ['shenyou', 'mingsi'], pet: 0 },
 };
+export const SHENSHOU = Object.keys(MONSTERS).filter(id => MONSTERS[id].shenshou);
 export const GHOST_NAMES = ['吊死鬼', '冤死鬼', '饿死鬼', '赌鬼', '酒鬼', '淹死鬼', '无头鬼', '懒惰鬼', '倒霉鬼', '胆小鬼'];
 export const GHOST_PREFIX = ['昏昏', '嘻嘻', '呜呜', '咕咕', '哼哼', '嘿嘿', '悠悠', '叽叽'];
 
@@ -256,10 +350,16 @@ export const PARTNERS = {
   yuner: { name: '云儿', school: 'putuo', race: 'xian', price: 6000, look: { skin: '#fff4ec', hair: '#3a2a4a', hairStyle: 'longhair', cloth: '#8ad8c8', cloth2: '#ffffff', belt: '#4aa898', pants: '#e0f8f4', shoe: '#3a7a70', ribbon: '#ffffff', gender: 'f', weapon: 'ribbon' }, desc: '普陀山侍女，持续治疗。' },
   tieniu: { name: '铁牛', school: 'shituo', race: 'mo', price: 6000, look: { skin: '#d8a078', hair: '#2a1a0a', hairStyle: 'demon', cloth: '#8a6a2a', cloth2: '#f0d060', belt: '#3a2a0a', pants: '#4a3a1a', shoe: '#2a1a0a', ribbon: '#f0d060', weapon: 'axe', big: true }, desc: '狮驼岭力士，鹰击群攻。' },
   hongxiu: { name: '红袖', school: 'mowang', race: 'mo', price: 8000, look: { skin: '#fff0e0', hair: '#a82a2a', hairStyle: 'pony', cloth: '#e84a3a', cloth2: '#ffe0a0', belt: '#8a1a1a', pants: '#8a2a2a', shoe: '#4a1010', ribbon: '#ffe0a0', gender: 'f', weapon: 'claw' }, desc: '魔王寨女将，三昧真火。' },
+  longnv: { name: '龙女', school: 'wuzhuang', race: 'xian', price: 0, look: { skin: '#fff0ea', hair: '#3a6ad8', hairStyle: 'dragon', cloth: '#6ab8e8', cloth2: '#ffffff', belt: '#e8c040', pants: '#d8f0ff', shoe: '#3a6ad8', ribbon: '#ffd0f0', gender: 'f', weapon: 'ribbon' }, desc: '东海龙王之女，乾坤袖里藏，兼修生命之泉。' },
+  shancai: { name: '善财童子', school: 'putuo', race: 'xian', price: 0, look: { skin: '#ffe8d8', hair: '#1a1a1a', hairStyle: 'topknot', cloth: '#e84a3a', cloth2: '#ffe080', belt: '#e8a030', pants: '#ffd0a0', shoe: '#8a3a1a', ribbon: '#ffe080', weapon: 'spear' }, desc: '红孩儿皈依观音后的法号，普度众生。' },
+  nezha: { name: '哪吒', school: 'tiangong', race: 'xian', price: 0, look: { skin: '#ffe8d8', hair: '#1a1a2a', hairStyle: 'twin', cloth: '#e83a4a', cloth2: '#fff0c0', belt: '#e8b830', pants: '#f0c0a0', shoe: '#8a2a2a', ribbon: '#e83a4a', weapon: 'ring' }, desc: '三坛海会大神，乾坤圈、混天绫，雷霆封印。' },
+  qingyi: { name: '青衣', school: 'nverer', race: 'ren', price: 40000, look: { skin: '#fff0e4', hair: '#1a2a1a', hairStyle: 'pony', cloth: '#4ab88a', cloth2: '#f0fff0', belt: '#2a6a4a', pants: '#c8f0d8', shoe: '#2a5a3a', ribbon: '#ffb0c0', gender: 'f', weapon: 'whip' }, desc: '女儿村暗器高手，出手极快，擅长封印。' },
+  mengpo: { name: '孟婆', school: 'difu', race: 'mo', price: 80000, look: { skin: '#f0e0d0', hair: '#e0e0e0', hairStyle: 'bun', cloth: '#5a4a6a', cloth2: '#c8b8d8', belt: '#3a2a4a', pants: '#8a7a9a', shoe: '#2a1a3a', ribbon: '#c8b8d8', gender: 'f', weapon: 'staff' }, desc: '奈何桥边熬汤人，阎罗令群攻，尸毒缠身。' },
 };
 
 // ---------------- 经验与数值曲线 ----------------
 export const expNeed = L => Math.floor(80 + 20 * L * L + 0.8 * L * L * L);
 export const monsterExp = L => Math.floor(20 + 12 * L + 0.6 * L * L);
-export const skillCost = lv => Math.floor(10 + lv * lv * 1.5);
-export const tierForLevel = L => Math.min(6, Math.floor(L / 10));
+// 60 级以后改为线性增长，避免高等级学技能贵得离谱
+export const skillCost = lv => Math.floor(lv <= 60 ? 10 + lv * lv * 1.5 : 5410 + (lv - 60) * 190);
+export const tierForLevel = L => Math.min(MAX_TIER, Math.floor(L / 10));

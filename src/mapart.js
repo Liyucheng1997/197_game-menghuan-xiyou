@@ -27,6 +27,8 @@ export const THEMES = {
   volcano: { grass: '#8a6a4a', road: '#a87a5a', stone: '#8a6a60', sand: '#b08a6a', water: '#f07a2a', deep: '#d04a1a', rock: '#4a3a3a', dark: '#6a4a3a', cave: '#5a4040', wood: '#8a5a3a', cloud: '#fff', lava: '#f05a1a', wall: '#3a2020' },
   rock: { grass: '#8aa060', road: '#b8a888', stone: '#a8a098', sand: '#c8b890', water: '#5a98c0', deep: '#3a78a0', rock: '#6a625a', dark: '#8a7a6a', cave: '#6a5a50', wood: '#a8804a', cloud: '#fff', lava: '#f05a1a', wall: '#4a4038' },
   web: { grass: '#7a6a8a', road: '#9a8aa0', stone: '#8a8098', sand: '#a898a8', water: '#5a5a8a', deep: '#3a3a6a', rock: '#4a3a50', dark: '#6a5a70', cave: '#766680', wood: '#8a6a5a', cloud: '#fff', lava: '#f05a1a', wall: '#3a2a40' },
+  snow: { grass: '#e6edf3', road: '#c4ccd6', stone: '#d6dce4', sand: '#f2f4f6', water: '#a8d8f0', deep: '#6aa8d8', rock: '#8a98a8', dark: '#b8c4d0', cave: '#8a90a0', wood: '#b89a7a', cloud: '#ffffff', lava: '#f05a1a', wall: '#5a6070' },
+  leiyin: { grass: '#c8b070', road: '#e8cc88', stone: '#ecdcb0', sand: '#f0d890', water: '#6ab0d0', deep: '#3a80b0', rock: '#8a6a4a', dark: '#a88a50', cave: '#7a6040', wood: '#c89a5a', cloud: '#fff', lava: '#f05a1a', wall: '#6a3a1a' },
   underworld: { grass: '#4a5a5a', road: '#5a5a6a', stone: '#5a5a6e', sand: '#6a6070', water: '#3a5a7a', deep: '#1a2a4a', rock: '#2a2a3a', dark: '#3a3a4a', cave: '#4a4458', wood: '#5a4a4a', cloud: '#fff', lava: '#7a3ad0', wall: '#1a1a26' },
 };
 
@@ -197,8 +199,9 @@ function treeSprite(kind, v, theme) {
       round: ['#4fa84a', '#62bc56', '#7ad066'], pine: ['#2f7a4a', '#3a9058', '#4aa468'], willow: ['#6ab84a', '#80c85a', '#9ad86a'],
       cherry: ['#ff9ab8', '#ffb4cc', '#ffd0e0'], maple: ['#e0582a', '#f07a3a', '#f89a4a'], peach: ['#4fa84a', '#62bc56', '#7ad066'],
       ginseng: ['#3a9a5a', '#4ab06a', '#6ac880'], ghost: ['#4a5a6a', '#5a6a7a', '#6a7a8a'], birch: ['#8ac860', '#9ad870', '#b0e080'],
+      snowpine: ['#d4e2ec', '#e8f0f6', '#ffffff'], gold: ['#d8a830', '#e8c040', '#f8e070'],
     }[kind] || ['#4fa84a', '#62bc56', '#7ad066'];
-    if (kind === 'pine') {
+    if (kind === 'pine' || kind === 'snowpine') {
       for (let k = 0; k < 4; k++) {
         const yy = by - 30 - k * 17, ww = 34 - k * 7;
         g.beginPath(); g.moveTo(cx - ww, yy); g.quadraticCurveTo(cx, yy + 6, cx + ww, yy); g.lineTo(cx, yy - 26); g.closePath();

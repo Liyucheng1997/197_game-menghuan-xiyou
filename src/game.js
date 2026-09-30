@@ -1,8 +1,11 @@
 // 游戏规则：NPC 交互、任务、遇敌、奖励
-import { ROLES, SCHOOLS, SKILLS, ITEMS, MONSTERS, PARTNERS, GHOST_NAMES, GHOST_PREFIX, expNeed, monsterExp, tierForLevel, DRUG_SHOP, GROCERY_SHOP, PET_MAX } from './data.js';
-import { G, save, gainExp, petGainExp, addItem, removeItem, countItem, addEquip, randomDrop, makeEquip, makePet, addPet, recruit, allyUnits, syncFromBattle, activePet, fullHeal, stats, bagFree } from './state.js';
+import { ROLES, SCHOOLS, SKILLS, ITEMS, MONSTERS, PARTNERS, GHOST_NAMES, GHOST_PREFIX, expNeed, monsterExp, tierForLevel, DRUG_SHOP, GROCERY_SHOP, HIGH_DRUG_SHOP, PET_MAX, PET_TRAIT_POOL, PET_RARE_POOL, PET_HIGH_POOL, MAX_LEVEL } from './data.js';
+import { G, save, gainExp, petGainExp, addItem, removeItem, countItem, addEquip, randomDrop, makeEquip, makePet, addPet, recruit, allyUnits, syncFromBattle, activePet, fullHeal, stats, bagFree, levelCap } from './state.js';
+import { STORY2, BOSS_FIGHTS2 } from './story2.js';
+import * as Act from './activity.js';
+import * as Mall from './mall.js';
 import { enemyUnit, layoutEnemies } from './enemies.js';
-import { getMap, MAP_IDS, MAP_NAMES, randomWalkable } from './maps.js';
+import { getMap, MAP_IDS, MAP_NAMES, WORLD_ORDER, randomWalkable } from './maps.js';
 import { NPCS } from './npcs.js';
 import { petStats } from './stats.js';
 import { W, enterMap, navigate, transition, snapshot } from './world.js';
@@ -80,8 +83,9 @@ export const MAIN = [
   { title: '三打白骨精', giver: null, auto: true, lv: 30,
     accept: ['白骨精现出了原形，就在洞穴最深处！这是最后的决战！<br><i>建议等级36以上。</i>'],
     goal: { type: 'boss', boss: 'baigujing', map: 'baigu', x: 26, y: 6 }, turnin: 'tudi',
-    done: ['三打白骨精，少侠威名将传遍三界！', '老朽这里有一只<b>小白龙</b>，它仰慕少侠已久，愿追随左右。', '<i>主线剧情完成！你可以继续做师门、抓鬼、宝图任务，或前往花果山历练，冲击69级！</i>'],
+    done: ['三打白骨精，少侠威名将传遍三界！', '老朽这里有一只<b>小白龙</b>，它仰慕少侠已久，愿追随左右。', '<i>第一部完结！花果山的<b>通臂猿猴</b>似乎有急事找你，40级后去看看吧。</i>'],
     reward: { expF: 4, gold: 20000, pet: 'xiaobailong', title: '降妖除魔' } },
+  ...STORY2,
 ];
 
 const BOSS_FIGHTS = {
@@ -92,6 +96,7 @@ const BOSS_FIGHTS = {
   laofu: () => [enemyUnit('laofu', 39), enemyUnit('jiangshi', 37), enemyUnit('jiangshi', 37), enemyUnit('kulou', 37), enemyUnit('zhizhu', 37)],
   baigujing: () => [enemyUnit('baigujing', 42), enemyUnit('jiangshi', 38), enemyUnit('jiangshi', 38), enemyUnit('yuanhun', 38), enemyUnit('zhizhu', 38), enemyUnit('kulou', 38)],
 };
+for (const [boss, list] of Object.entries(BOSS_FIGHTS2)) BOSS_FIGHTS[boss] = () => list.map(([mid, lv]) => enemyUnit(mid, lv));
 
 // NPC 所在地图索引
 let npcIndex = null;
@@ -146,15 +151,16 @@ async function completeMain(extraPagesBefore = []) {
   return { pages, rw };
 }
 
-async function giveReward(r, source) {
+export async function giveReward(r, source) {
   const S = G.S;
   const out = [];
-  if (r.expF) { const e = Math.floor(expNeed(S.level) * r.expF); out.push(`经验 +${fmt(e)}`); grantExp(e); }
+  if (r.expF) { const e = grantExp(Math.floor(expNeed(S.level) * r.expF)).gained; out.push(`经验 +${fmt(e)}`); }
   if (r.gold) { S.gold += r.gold; out.push(`银两 +${fmt(r.gold)}`); Audio2.sfx('coin'); }
+  if (r.jade) { Mall.addJade(r.jade); out.push(`<span style="color:#ff7ad8">仙玉 +${r.jade}</span>`); }
   for (const [id, n] of r.items || []) { addItem(id, n); out.push(`${ITEMS[id].name} ×${n}`); }
   if (r.equip) { const eq = makeEquip(r.equip.slot, r.equip.tier, ROLES[S.role].weapon, r.equip.rarity || 0); if (addEquip(eq)) out.push(eq.name); }
   if (r.partner && recruit(r.partner)) { out.push(`伙伴「${PARTNERS[r.partner].name}」加入队伍`); banner('新伙伴加入', PARTNERS[r.partner].name + ' · ' + SCHOOLS[PARTNERS[r.partner].school].name); }
-  if (r.pet) { const p = makePet(r.pet, Math.max(1, S.level), true); p.growth = 1.26; if (addPet(p)) out.push(`召唤兽「${p.name}」`); else { out.push('召唤兽已满，小白龙在宠物仙子处等你'); S.flags.pendingPet = r.pet; } }
+  if (r.pet) { const p = makePet(r.pet, Math.max(1, S.level), true); if (!p.shenshou) p.growth = 1.26; if (addPet(p)) out.push(`召唤兽「${p.name}」`); else { out.push(`召唤兽已满，${p.name}在长安城等你领取`); S.flags.pendingPet = r.pet; } }
   if (r.skills && S.school) { for (const id of [...SCHOOLS[S.school].skills, SCHOOLS[S.school].passive]) S.skills[id] = Math.max(S.skills[id] || 0, r.skills); out.push(`门派技能提升至${r.skills}级`); }
   if (r.title) { S.title = r.title; out.push(`称号「${r.title}」`); }
   log(`【${source}】获得：${out.join('，')}`, '#ffd23a');
@@ -162,15 +168,25 @@ async function giveReward(r, source) {
   return out;
 }
 
+// 经验加成：双倍经验丹、VIP
+export function expMul() { return (G.S.doubleMs > 0 ? 2 : 1) * (1 + Mall.vipPerk('exp')); }
+let capToastAt = 0;
 export function grantExp(e) {
   const before = G.S.level;
+  e = Math.floor(e * expMul());
   const r = gainExp(e);
+  r.gained = e;
+  if (r.capped && e > 0 && performance.now() - capToastAt > 60000) {
+    capToastAt = performance.now();
+    toast(`已到达<b>${levelCap()}级</b>瓶颈，经验会先储存起来。<br>去长安城找<b>太白金星</b>渡劫突破吧！`, 3200);
+  }
   if (r.levels) {
     Audio2.sfx('levelup');
     banner(`升级！等级 ${G.S.level}`, '气血魔法已回满');
     log(`恭喜你升到了 ${G.S.level} 级！`, '#7dff7a');
     const q = mq(), st = mainStep();
     if (st && q.state === 'accept' && before < st.lv && G.S.level >= st.lv) toast(`新的主线任务：<b>${st.title}</b>`);
+    Mall.checkRedDot();
   }
   return r;
 }
@@ -190,7 +206,8 @@ export function dynNpcs(mapId) {
   if (tq && tq.map === mapId) out.push({ id: 'bandit', name: '强盗头目', title: '宝图任务', look: MONSTERS[S.level >= 12 ? 'shanzei' : 'qiangdao'].look, x: tq.x, y: tq.y, onTalk: fightBandit });
   const sq = S.quests.school;
   if (sq && sq.type === 'fight' && sq.map === mapId) out.push({ id: 'provoker', name: sq.name, title: '师门任务', look: MONSTERS[sq.mid].look, x: sq.x, y: sq.y, onTalk: fightProvoker });
-  if (mapId === 'changan' && S.flags.pendingPet) out.push({ id: 'pendingpet', name: '小白龙', title: '等你领取', look: MONSTERS.xiaobailong.look, x: 77, y: 31, onTalk: claimPendingPet });
+  if (mapId === 'changan' && S.flags.pendingPet) out.push({ id: 'pendingpet', name: MONSTERS[S.flags.pendingPet].name, title: '等你领取', look: MONSTERS[S.flags.pendingPet].look, x: 77, y: 31, onTalk: claimPendingPet });
+  Act.dynNpcs(mapId, out);
   return out;
 }
 
@@ -208,7 +225,7 @@ export function questMark(n) {
   if (S.quests.school?.type === 'buy' && id === 'master_' + S.school && countItem(S.quests.school.item) > 0) return '?';
   if (id === 'zhongkui' && S.level >= 15 && !S.quests.ghost) return '!';
   if (id === 'xiaoer' && S.level >= 10 && !S.quests.treasure) return '!';
-  return null;
+  return Act.questMark(id);
 }
 
 // ---------------- 交互 ----------------
@@ -247,7 +264,7 @@ export async function interact(n) {
   }
   const svc = services(id);
   const chat = def.chat[Math.floor(Math.random() * def.chat.length)];
-  const opts = svc.map(s => ({ label: s.label, value: s.fn, cls: s.cls }));
+  const opts = svc.map(s => ({ label: s.label, value: s.fn, cls: s.cls, disabled: s.disabled }));
   opts.push({ label: '离开', value: null });
   const fn = await dialog({ ...base, pages: [svc.text || chat], options: opts });
   if (typeof fn === 'function') fn();
@@ -259,15 +276,17 @@ function services(id) {
   const shop = (label, items) => list.push({ label, fn: () => P.shopPanel(NPCS[id].name, items) });
   switch (id) {
     case 'jy_inn': list.push({ label: '住店休息（50两）', fn: () => rest(50) }); break;
-    case 'ca_inn': list.push({ label: '住店休息（100两）', fn: () => rest(100) }); break;
+    case 'ca_inn': list.push({ label: Mall.vipLevel() >= 4 ? '住店休息（VIP免费）' : '住店休息（100两）', fn: () => rest(Mall.vipLevel() >= 4 ? 0 : 100) }); break;
     case 'jy_grocer': shop('购买物品', { items: ['baozi', 'kaoya', 'zhenlu', 'sheyao', 'feixing'] }); break;
     case 'jy_weapon': shop('购买装备', { equip: ['weapon', 'armor', 'helm'], tiers: [0, 1] }); break;
-    case 'ca_weapon': shop('购买武器', { equip: ['weapon'], tiers: [0, 1, 2, 3, 4, 5, 6] }); break;
-    case 'ca_armor': shop('购买服饰', { equip: ['armor', 'helm'], tiers: [0, 1, 2, 3, 4, 5, 6] }); break;
-    case 'ca_acc': shop('购买饰品', { equip: ['neck', 'belt', 'boots'], tiers: [0, 1, 2, 3, 4, 5, 6] }); break;
+    case 'ca_weapon': shop('购买武器', { equip: ['weapon'], tiers: shopTiers() }); list.push({ label: '装备强化', fn: () => P.forgePanel() }); break;
+    case 'ca_armor': shop('购买服饰', { equip: ['armor', 'helm'], tiers: shopTiers() }); break;
+    case 'ca_acc': shop('购买饰品', { equip: ['neck', 'belt', 'boots'], tiers: shopTiers() }); break;
     case 'ca_drug': shop('购买药品', { items: DRUG_SHOP }); break;
     case 'ca_grocer': shop('购买杂货', { items: GROCERY_SHOP }); break;
-    case 'jw_merchant': shop('购买补给', { items: ['kaoya', 'jinchuang', 'nverhong', 'sheli', 'feixing', 'sheyao'] }); break;
+    case 'jw_merchant': shop('购买补给', { items: ['kaoya', 'jinchuang', 'dahuan', 'nverhong', 'xianniang', 'sheli', 'feixing', 'sheyao'] }); break;
+    case 'lg_xia': case 'bj_shop': case 'hy_shop': case 'nt_shop': case 'ly_shop': shop('购买补给', { items: HIGH_DRUG_SHOP }); break;
+    case 'ca_bank': list.push({ label: '充值仙玉（藏宝阁）', cls: 'primary', fn: () => Mall.mallPanel('charge') }); break;
     case 'yizhan': yizhanServices(list); break;
     case 'xiayi': list.push({ label: '招募伙伴 / 调整队伍', fn: () => P.partnerPanel(), cls: 'primary' }); break;
     case 'petfairy':
@@ -276,11 +295,14 @@ function services(id) {
       break;
     case 'zhongkui': ghostServices(list); break;
     case 'xiaoer': treasureServices(list); break;
+    default: Act.services(id, list);
   }
   if (id.startsWith('master_')) masterServices(id.slice(7), list);
   return list;
 }
 
+// 长安装备铺出售到比人物高一档的装备（最高 12 档），更高档只能靠掉落、活动与剧情
+function shopTiers() { const top = Math.min(12, Math.max(6, tierForLevel(G.S.level) + 1)); return Array.from({ length: top + 1 }, (_, i) => i).slice(Math.max(0, top - 7)); }
 function rest(cost) {
   const S = G.S;
   if (S.gold < cost) { toast('银两不足'); return; }
@@ -298,6 +320,13 @@ function yizhanServices(list) {
   if (S.school) list.push({ label: `回${SCHOOLS[S.school].name}`, fn: () => teleport('s_' + S.school), cls: 'primary' });
   else for (const [sid, sc] of Object.entries(SCHOOLS)) if (sc.race === race) list.push({ label: `前往${sc.name}（${sc.desc}）`, fn: () => teleport('s_' + sid) });
   list.push({ label: '送我去建邺城', fn: () => teleport('jianye') });
+  const far = WORLD_ORDER.filter(id => S.unlocked?.[id] && getMap(id).encounter && getMap(id).encounter.lv[0] >= 40);
+  if (far.length) list.push({ label: '直达已去过的远方（500两）', fn: async () => {
+    const v = await dialog({ look: NPCS.yizhan.look, name: '驿站老板', pages: ['客官要去哪儿？'], options: [...far.map(id => ({ label: `${MAP_NAMES[id]}（${getMap(id).encounter.lv[0]}~${getMap(id).encounter.lv[1]}级）`, value: id })), { label: '算了', value: null }] });
+    if (!v) return;
+    if (S.gold < 500) { toast('银两不足'); return; }
+    S.gold -= 500; teleport(v);
+  } });
 }
 export function teleport(mapId, x, y) {
   transition(() => enterMap(mapId, x, y));
@@ -346,18 +375,18 @@ async function joinSchool(sid) {
 
 // ---------------- 师门任务 ----------------
 const DELIVER_NPCS = ['laosun', 'wangdasao', 'lishanren', 'jy_teacher', 'ca_weapon', 'ca_armor', 'ca_drug', 'ca_bank', 'yuantiangang', 'ca_monk', 'xiayi', 'petfairy', 'xiaoer', 'ca_scholar', 'jn_woodcutter', 'gj_hunter'];
-function fieldMapFor(L) {
+export function fieldMapFor(L) {
   const cands = MAP_IDS.filter(id => { const e = getMap(id).encounter; return e && !['chenchuan', 'baigu'].includes(id) && e.lv[0] <= L + 2; });
   const best = cands.sort((a, b) => Math.abs(getMap(b).encounter.lv[1] - L) - Math.abs(getMap(a).encounter.lv[1] - L)).pop();
   return best || 'donghai';
 }
-function giveShimen() {
+export function giveShimen(quiet) {
   const S = G.S;
   const types = ['deliver', 'buy', 'patrol', 'fight'];
   const type = pick(types);
   const q = { type };
   if (type === 'deliver') q.npc = pick(DELIVER_NPCS.filter(id => id !== 'master_' + S.school));
-  if (type === 'buy') q.item = pick(S.level < 15 ? ['baozi', 'zhenlu', 'sheyao', 'feixing'] : ['kaoya', 'zhenlu', 'jinchuang', 'nverhong', 'sheyao']);
+  if (type === 'buy') q.item = pick(S.level < 15 ? ['baozi', 'zhenlu', 'sheyao', 'feixing'] : S.level < 60 ? ['kaoya', 'zhenlu', 'jinchuang', 'nverhong', 'sheyao'] : ['jinchuang', 'dahuan', 'nverhong', 'xianniang', 'sheyao']);
   if (type === 'fight') {
     q.map = fieldMapFor(S.level);
     const m = getMap(q.map);
@@ -368,7 +397,7 @@ function giveShimen() {
   S.quests.school = q;
   Audio2.sfx('quest');
   log('【师门】' + shimenText(q), '#8ad8ff');
-  dialog({ look: NPCS['master_' + S.school].look, name: SCHOOLS[S.school].master, pages: [shimenText(q)] });
+  if (!quiet) dialog({ look: NPCS['master_' + S.school].look, name: SCHOOLS[S.school].master, pages: [shimenText(q)] });
   P.refreshHud(); save();
 }
 export function shimenText(q) {
@@ -377,16 +406,16 @@ export function shimenText(q) {
   if (q.type === 'patrol') return '最近有妖怪在门派附近捣乱，去<b>门派里巡逻</b>，把它们赶走！';
   return `有<b>${q.name}</b>在${MAP_NAMES[q.map]}（${q.x},${q.y}）挑衅本门，去教训他！`;
 }
-function finishShimen() {
+function finishShimen(inBattle) {
   const S = G.S;
   const n = ++S.quests.shimenCount;
+  S.stat.shimen++;
   const round = ((n - 1) % 10) + 1;
   const L = S.level;
-  const exp = Math.floor(expNeed(L) * (0.07 + round * 0.007));
-  const gold = 40 + L * 10 + round * 15;
+  const gold = Math.floor((40 + L * 10 + round * 15) * (1 + Mall.vipPerk('gold')));
   S.quests.school = null;
   S.gold += gold;
-  grantExp(exp);
+  const exp = grantExp(Math.floor(expNeed(L) * (0.07 + round * 0.007))).gained;
   const pet = activePet(); if (pet) petGainExp(pet, exp * 0.6);
   let extra = '';
   if (round === 10) {
@@ -398,19 +427,24 @@ function finishShimen() {
   banner(`师门任务完成（第${round}环）`, `经验+${fmt(exp)} 银两+${gold}${extra}`);
   log(`【师门】第${round}环完成：经验+${fmt(exp)}，银两+${gold}${extra}`, '#8ad8ff');
   P.refreshHud(); save();
+  // 连续任务：自动领取下一环并出发
+  if (S.quests.chain && S.school) {
+    const go = () => { if (S.quests.school || R.scene !== 'world') return; giveShimen(true); const t = trackList().find(x => x.cat === '师门'); if (t?.nav) followTrack(t.nav); };
+    if (inBattle) R.afterBattle = go; else setTimeout(go, 600);
+  }
 }
 async function fightProvoker() {
   const S = G.S, q = S.quests.school;
   const n = teamSize() + randi(0, 1);
   const enemies = Array.from({ length: n }, (_, i) => enemyUnit(q.mid, clamp(S.level + (i ? 0 : 1), 1, 69), { name: i ? undefined : q.name, noCatch: true, leader: i === 0 }));
-  fight(enemies, { noCatch: true, onWin: () => { finishShimen(); } });
+  fight(enemies, { noCatch: true, onWin: () => { finishShimen(true); } });
 }
 function patrolFight() {
   const S = G.S;
   const mid = pick(getMap(fieldMapFor(S.level)).encounter.mobs);
   const n = teamSize();
   const enemies = Array.from({ length: n }, () => enemyUnit(mid, S.level, { name: '捣乱的' + MONSTERS[mid].name, noCatch: true }));
-  fight(enemies, { noCatch: true, onWin: () => finishShimen() });
+  fight(enemies, { noCatch: true, onWin: () => finishShimen(true) });
 }
 
 // ---------------- 抓鬼 ----------------
@@ -422,16 +456,18 @@ function ghostServices(list) {
   if (!gq) list.push({ label: '领取抓鬼任务', cls: 'primary', fn: () => giveGhost() });
   else list.push({ label: `查看任务：${gq.name}`, fn: () => toast(`${gq.name}在${MAP_NAMES[gq.map]}（${gq.x},${gq.y}）`) });
 }
-function giveGhost() {
+export function giveGhost(quiet) {
   const S = G.S;
-  const maps = ['jianye', 'jiangnan', 'changan', 'donghai', 'guojing'];
-  if (S.level >= 25) maps.push('jingwai');
+  const maps = S.level < 60 ? ['jianye', 'jiangnan', 'changan', 'donghai', 'guojing'] : ['changan', 'guojing', 'jingwai'];
+  if (S.level >= 25 && S.level < 60) maps.push('jingwai');
+  for (const id of ['huaguo', 'longgong', 'beiju', 'huoyan', 'wudi', 'nantian', 'youming']) { const e = getMap(id).encounter; if (S.level >= e.lv[0] && S.level <= e.lv[1] + 25) maps.push(id); }
   const map = pick(maps);
   const [x, y] = randomWalkable(getMap(map));
   const name = pick(GHOST_PREFIX) + pick(GHOST_NAMES);
-  S.quests.ghost = { map, x, y, name, mid: pick(['yegui', 'yuanhun', 'niutou', 'mamian', 'jiangshi']) };
+  S.quests.ghost = { map, x, y, name, mid: pick(['yegui', 'yuanhun', 'niutou', 'mamian', 'jiangshi', ...(S.level >= 90 ? ['kuloujiang', 'youhun'] : []), ...(S.level >= 118 ? ['yinbing', 'wuchang'] : [])]) };
   Audio2.sfx('quest');
   log(`【抓鬼】${name}出现在${MAP_NAMES[map]}（${x},${y}）`, '#d8a8ff');
+  if (quiet) { P.refreshHud(); save(); return; }
   dialog({ look: NPCS.zhongkui.look, name: '钟馗', pages: [`<b>${name}</b>正在${MAP_NAMES[map]}（${x},${y}）作祟，速去收服！<br><i>点击右侧任务追踪可以自动寻路。</i>`] });
   P.refreshHud(); save();
 }
@@ -446,16 +482,18 @@ function fightGhost() {
     noCatch: true,
     onWin: () => {
       const c = ++S.quests.ghostCount;
+      S.stat.ghost++;
       const round = ((c - 1) % 10) + 1;
-      const exp = Math.floor(expNeed(L) * 0.09 * (1 + round * 0.06));
-      const gold = L * 25 + round * 40;
-      S.gold += gold; grantExp(exp);
+      const gold = Math.floor((L * 25 + round * 40) * (1 + Mall.vipPerk('gold')));
+      S.gold += gold;
+      const exp = grantExp(Math.floor(expNeed(L) * 0.09 * (1 + round * 0.06))).gained;
       const pet = activePet(); if (pet) petGainExp(pet, exp * 0.6);
       S.quests.ghost = null;
       let extra = '';
       if (round === 10) { const eq = randomDrop(tierForLevel(L), 0.2); if (addEquip(eq)) extra = `，钟馗赏赐 ${eq.name}`; addItem('jinke', 1); extra += '，金柳露×1'; }
       banner(`收服${gq.name}（第${round}只）`, `经验+${fmt(exp)} 银两+${gold}${extra}`);
       log(`【抓鬼】第${round}只完成：经验+${fmt(exp)}，银两+${gold}${extra}`, '#d8a8ff');
+      if (S.quests.chain) R.afterBattle = () => { if (S.quests.ghost) return; giveGhost(true); const g2 = S.quests.ghost; navigate({ map: g2.map, npc: 'ghost' }); };
       return `抓鬼奖励：经验+${fmt(exp)}，银两+${gold}${extra}`;
     },
   });
@@ -472,7 +510,7 @@ function treasureServices(list) {
 }
 function giveTreasure() {
   const S = G.S;
-  const map = pick(['jiangnan', 'guojing', 'donghai', ...(S.level >= 22 ? ['jingwai'] : [])]);
+  const map = pick(S.level < 60 ? ['jiangnan', 'guojing', 'donghai', ...(S.level >= 22 ? ['jingwai'] : [])] : ['guojing', 'jingwai', 'huaguo', ...(S.level >= 75 ? ['beiju'] : [])]);
   const [x, y] = randomWalkable(getMap(map));
   S.quests.treasure = { map, x, y };
   Audio2.sfx('quest');
@@ -488,7 +526,7 @@ function fightBandit() {
   fight(enemies, {
     noCatch: true,
     onWin: () => {
-      const maps = ['jianye', 'jiangnan', 'donghai', 'guojing', 'changan', ...(S.level >= 22 ? ['jingwai'] : [])];
+      const maps = S.level < 60 ? ['jianye', 'jiangnan', 'donghai', 'guojing', 'changan', ...(S.level >= 22 ? ['jingwai'] : [])] : ['changan', 'guojing', 'jingwai', 'huaguo', 'longgong', ...(S.level >= 75 ? ['beiju'] : [])];
       const map = pick(maps);
       const [x, y] = randomWalkable(getMap(map));
       S.quests.treasure = null;
@@ -509,6 +547,7 @@ export async function digTreasure(index) {
   }
   S.inv.splice(index, 1);
   P.closeAll();
+  if (e.id === 'gj_baotu') { Act.digHighTreasure(); return; }
   const r = Math.random();
   const L = S.level;
   if (r < 0.15) {
@@ -570,9 +609,9 @@ async function fightMainBoss(st) {
 async function claimPendingPet() {
   const S = G.S;
   if (S.pets.length >= PET_MAX) { toast('召唤兽已满，先在召唤兽界面放生一只吧'); return; }
-  const p = makePet(S.flags.pendingPet, S.level, true); p.growth = 1.26;
+  const p = makePet(S.flags.pendingPet, S.level, true); if (!p.shenshou) p.growth = 1.26;
   addPet(p); S.flags.pendingPet = null;
-  toast('小白龙加入了你的队伍！'); P.refreshHud(); save();
+  toast(`${p.name}加入了你的队伍！`); P.refreshHud(); save();
 }
 
 export function fight(enemies, opts = {}) {
@@ -581,6 +620,7 @@ export function fight(enemies, opts = {}) {
   R.scene = 'battle';
   W.path = []; W.nav = null;
   const allies = allyUnits();
+  opts.allyMod?.(allies);
   layoutEnemies(enemies);
   const B = { units: [...allies, ...enemies], round: 1, canFlee: !opts.boss && opts.noFlee !== true, noCatch: !!opts.noCatch, kind: opts.boss ? 'boss' : 'field' };
   const bg = snapshot();
@@ -603,6 +643,7 @@ export function fight(enemies, opts = {}) {
     Audio2.play(W.map.music);
     if (R.afterLose) { const f = R.afterLose; R.afterLose = null; f(); }
     if (R.afterBattle) { const f = R.afterBattle; R.afterBattle = null; f(); }
+    R.afterFlee = null;
     checkMainGoal();
     P.refreshHud();
     save();
@@ -613,10 +654,14 @@ function onBattleEnd(result, B, opts) {
   const S = G.S;
   syncFromBattle(B.units);
   const lines = [];
-  if (result === 'win') {
+  if (result === 'win' && opts.noLoot) {
+    if (opts.onWin) { const extra = opts.onWin(); if (extra) lines.push(`<div class="res-row q">${extra}</div>`); }
+    if (opts.boss) S.stat.bosses++;
+  } else if (result === 'win') {
     let exp = 0, gold = 0;
     const drops = [];
     const q = mq(), st = mainStep();
+    if (opts.boss) S.stat.bosses++;
     for (const u of B.units) {
       if (u.side !== 'enemy' || u.gone) continue;
       let e = monsterExp(u.level) * (u.boss ? 4 : u.leader ? 2 : 1);
@@ -625,18 +670,20 @@ function onBattleEnd(result, B, opts) {
       gold += Math.floor(u.level * 3 + 5 + Math.random() * u.level * 2) * (u.boss ? 5 : 1);
       S.kills++;
       if (st && q.state === 'active' && st.goal.type === 'kill' && u.mid === st.goal.mid) q.progress++;
-      const m = MONSTERS[u.mid];
+      const m = MONSTERS[u.mid] || {};
       for (const [id, p] of m.drops || []) if (chance(p)) { if (addItem(id, 1)) drops.push(ITEMS[id].name); }
       if (chance(u.boss ? 1 : 0.035)) { const eq = randomDrop(tierForLevel(u.level), u.boss ? 0.25 : 0); if (addEquip(eq)) drops.push(`<span style="color:${['#fff', '#6fe07a', '#5ab8ff', '#d68aff'][eq.rarity]}">${eq.name}</span>`); }
     }
     exp = Math.floor(exp);
+    gold = Math.floor(gold * (1 + Mall.vipPerk('gold')));
     S.gold += gold;
     const before = S.level;
-    grantExp(exp);
+    const petExp = exp;
+    exp = grantExp(exp).gained;
     const pet = activePet();
     let petLv = 0;
-    if (pet) petLv = petGainExp(pet, exp);
-    lines.push(`<div class="res-row">经验 <b>+${fmt(exp)}</b></div>`, `<div class="res-row">银两 <b>+${gold}</b></div>`);
+    if (pet) petLv = petGainExp(pet, petExp * (G.S.doubleMs > 0 ? 2 : 1));
+    lines.push(`<div class="res-row">经验 <b>+${fmt(exp)}</b>${G.S.doubleMs > 0 ? ' <span class="dbl">双倍</span>' : ''}</div>`, `<div class="res-row">银两 <b>+${gold}</b></div>`);
     if (pet) lines.push(`<div class="res-row">${esc(pet.name)} 经验 +${fmt(exp)}${petLv ? `，升到 ${pet.level} 级！` : ''}</div>`);
     if (drops.length) lines.push(`<div class="res-row">获得：${drops.join('、')}</div>`);
     if (S.level > before) lines.push(`<div class="res-lv">升级！当前等级 ${S.level}</div>`);
@@ -644,7 +691,16 @@ function onBattleEnd(result, B, opts) {
     if (opts.onWin) { const extra = opts.onWin(); if (extra) lines.push(`<div class="res-row q">${extra}</div>`); }
     if (bagFree() <= 0) lines.push('<div class="res-row warn">背包已满！</div>');
     checkMainGoal();
+  } else if (result === 'lose' && opts.noPenalty) {
+    lines.push('<div class="res-row">挑战失败，再接再厉！</div>', '<div class="res-row">（挑战类玩法失败不会损失银两）</div>');
+    R.afterLose = () => {
+      const st2 = stats();
+      S.hp = Math.max(S.hp, Math.ceil(st2.maxHp / 2)); S.mp = Math.max(S.mp, Math.ceil(st2.maxMp / 2));
+      for (const p of S.pets) { const ps = petStats(p); p.hp = Math.max(p.hp, Math.ceil(ps.maxHp / 2)); }
+      opts.onLose?.();
+    };
   } else if (result === 'lose') {
+    opts.onLose?.();
     const lost = Math.floor(S.gold * 0.1);
     S.gold -= lost;
     lines.push(`<div class="res-row">你被打败了……损失银两 ${lost}</div>`, '<div class="res-row">醒来时已在客栈，气血恢复了一半。</div>');
@@ -656,6 +712,7 @@ function onBattleEnd(result, B, opts) {
       teleport(...town);
     };
   }
+  if (result === 'flee') opts.onLose?.();
   save();
   return { html: lines.join('') };
 }
@@ -696,8 +753,37 @@ export async function useItem(index, target = 'player') {
     case 'map': digTreasure(index); return;
     case 'petfood': { const pet = activePet(); if (!pet) { toast('没有参战召唤兽'); return; } removeItem(e.id, 1); const lv = petGainExp(pet, expNeed(pet.level) * 0.35); toast(`${pet.name}吃得很开心${lv ? `，升到了${pet.level}级！` : '！'}`); break; }
     case 'point': removeItem(e.id, 1); S.free += 2; toast('获得2点属性点，可在人物界面分配'); break;
-    case 'petgrow': { const pet = activePet(); if (!pet) { toast('没有参战召唤兽'); return; } if (pet.growth >= 1.3) { toast('成长已达上限'); return; } removeItem(e.id, 1); pet.growth = +Math.min(1.3, pet.growth + 0.01).toFixed(3); toast(`${pet.name}的成长提升到了${pet.growth}`); break; }
+    case 'petgrow': { const pet = activePet(); if (!pet) { toast('没有参战召唤兽'); return; } const cap = it.cap || 1.3, g = it.grow || 0.01; if (pet.growth >= cap) { toast('成长已达上限'); return; } removeItem(e.id, 1); pet.growth = +Math.min(cap, pet.growth + g).toFixed(3); toast(`${pet.name}的成长提升到了${pet.growth}`); break; }
+    case 'petbook': { const pet = activePet(); if (!pet) { toast('没有参战召唤兽，先在召唤兽界面设为参战'); return; } P.closeAll(); await learnBook(pet, e.id); break; }
+    case 'double': removeItem(e.id, 1); S.doubleMs += 60 * 60 * 1000; banner('双倍经验', `剩余 ${Math.round(S.doubleMs / 60000)} 分钟`); Audio2.sfx('levelup'); break;
+    case 'expbook': { removeItem(e.id, 1); const g2 = grantExp(Math.floor(expNeed(S.level) * 0.3)).gained; toast(`获得经验 ${fmt(g2)}`); break; }
+    case 'mat': toast(it.desc); return;
   }
+  P.refreshHud(); save();
+}
+
+// 魔兽要诀：技能越多越容易顶替掉已有技能（经典「打书」）
+export async function learnBook(pet, bookId) {
+  const S = G.S;
+  const high = bookId === 'gj_shoujue';
+  const pool = (high ? PET_HIGH_POOL : [...PET_TRAIT_POOL, ...PET_TRAIT_POOL, ...PET_RARE_POOL]).filter(t => !pet.skills.includes(t));
+  if (!pool.length) { toast('这只召唤兽已经学会书中所有技能了'); return; }
+  const ok = await confirmBox(`让<b>${esc(pet.name)}</b>（现有 ${pet.skills.length} 个技能）阅读${ITEMS[bookId].name}？<br><small>技能越多，新技能越容易顶替掉已有技能。</small>`, '打书！', '算了');
+  if (!ok) return;
+  removeItem(bookId, 1);
+  const sk = pick(pool);
+  const n = pet.skills.length;
+  const replaceP = n >= 10 ? 1 : Math.max(0, Math.min(0.85, (n - 2) * 0.15));
+  let msg;
+  if (Math.random() < replaceP) {
+    const i = randi(0, n - 1), old = pet.skills[i];
+    pet.skills[i] = sk;
+    msg = `<b>${SKILLS[sk].name}</b> 顶替了 ${SKILLS[old].name}`;
+  } else { pet.skills.push(sk); msg = `学会了 <b>${SKILLS[sk].name}</b>！技能数 ${pet.skills.length}`; }
+  const ps = petStats(pet); pet.hp = Math.min(pet.hp, ps.maxHp);
+  Audio2.sfx(SKILLS[sk].rare ? 'levelup' : 'quest');
+  banner(SKILLS[sk].rare ? '打书·高级技能！' : '打书', `${pet.name}${msg.replace(/<\/?b>/g, '')}`);
+  log(`【打书】${esc(pet.name)}${msg}`, SKILLS[sk].rare ? '#ffb040' : '#8ad8ff');
   P.refreshHud(); save();
 }
 
@@ -724,7 +810,7 @@ export function trackList() {
       if (g.type === 'join') { text = S.level < 5 ? '达到5级后去长安驿站拜师' : '去长安城<b>驿站老板</b>处拜师'; nav = { map: 'changan', npc: 'yizhan' }; }
     }
     out.push({ cat: '主线', title: st.title, text, nav, color: '#ffd23a' });
-  } else out.push({ cat: '主线', title: '已完成', text: '三界太平，继续历练吧', color: '#ffd23a' });
+  } else out.push({ cat: '主线', title: '已完成', text: G.S.level < MAX_LEVEL ? '三界太平，继续历练，冲击150级吧' : '你已是三界传说', color: '#ffd23a' });
   const sq = S.quests.school;
   if (sq) {
     let nav;
@@ -738,8 +824,9 @@ export function trackList() {
   if (gq) out.push({ cat: '抓鬼', title: `第${(S.quests.ghostCount % 10) + 1}只`, text: `${gq.name}（${MAP_NAMES[gq.map]} ${gq.x},${gq.y}）`, nav: { map: gq.map, npc: 'ghost' }, color: '#d8a8ff' });
   const tq = S.quests.treasure;
   if (tq) out.push({ cat: '宝图', title: '强盗头目', text: `${MAP_NAMES[tq.map]}（${tq.x},${tq.y}）`, nav: { map: tq.map, npc: 'bandit' }, color: '#ffb060' });
-  const maps = S.inv.filter(e => e.id === 'baotu' && e.data);
+  const maps = S.inv.filter(e => (e.id === 'baotu' || e.id === 'gj_baotu') && e.data);
   if (maps.length) { const d = maps[0].data; out.push({ cat: '宝图', title: `藏宝图×${maps.length}`, text: `挖宝：${MAP_NAMES[d.map]}（${d.x},${d.y}）`, nav: { map: d.map, x: d.x, y: d.y, dig: true }, color: '#ffb060' }); }
+  Act.trackItems(out);
   return out;
 }
 export function followTrack(nav) {
@@ -751,10 +838,18 @@ export function followTrack(nav) {
     return;
   }
   if (nav.dig) {
-    navigate({ map: nav.map, x: nav.x, y: nav.y, then: () => { const i = G.S.inv.findIndex(e => e.id === 'baotu' && e.data && e.data.map === nav.map && e.data.x === nav.x && e.data.y === nav.y); if (i >= 0) digTreasure(i); } });
+    navigate({ map: nav.map, x: nav.x, y: nav.y, then: () => { const i = G.S.inv.findIndex(e => (e.id === 'baotu' || e.id === 'gj_baotu') && e.data && e.data.map === nav.map && e.data.x === nav.x && e.data.y === nav.y); if (i >= 0) digTreasure(i); } });
     return;
   }
   navigate(nav);
 }
 
 export function onEnterMap() { P.refreshHud(); }
+
+// 主循环每步调用：双倍经验计时、天降异象
+export function tick(dt) {
+  const S = G.S;
+  if (!S) return;
+  if (S.doubleMs > 0) { S.doubleMs = Math.max(0, S.doubleMs - dt); if (!S.doubleMs) toast('双倍经验时间结束了'); }
+  Act.tick(dt);
+}

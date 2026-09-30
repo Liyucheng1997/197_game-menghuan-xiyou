@@ -7,6 +7,8 @@ export function mkUnit(o) {
 }
 export const isAlive = u => u.hp > 0 && !u.gone;
 export const has = (u, t) => u.traits.includes(t);
+// 普通/高级技能取较高的一档
+const tier = (u, t, lo, hi) => (has(u, 'gj_' + t) ? hi : has(u, t) ? lo : 0);
 export const enemiesOf = (B, u) => B.units.filter(x => x.side !== u.side && isAlive(x));
 export const alliesOf = (B, u) => B.units.filter(x => x.side === u.side && isAlive(x));
 export const deadAlliesOf = (B, u) => B.units.filter(x => x.side === u.side && !x.gone && x.hp <= 0);
@@ -58,7 +60,7 @@ export function physDamage(a, d, mult, rng, critBonus = 0) {
   dmg = Math.max(dmg, atk * mult * 0.1);
   dmg *= 0.92 + rng() * 0.16;
   let crit = false;
-  if (rng() < 0.03 + (has(a, 'bisha') ? 0.2 : 0) + critBonus) { dmg *= 1.6; crit = true; }
+  if (rng() < 0.03 + tier(a, 'bisha', 0.2, 0.3) + (a.critUp || 0) + critBonus) { dmg *= 1.6; crit = true; }
   if (d.status.defend) dmg *= 0.5;
   if (d.ghost && has(a, 'qugui')) dmg *= 1.3;
   return { dmg: Math.max(1, Math.round(dmg)), crit };
@@ -73,6 +75,7 @@ export function magicDamage(a, d, s, lv, rng) {
   dmg *= 0.95 + rng() * 0.1;
   if (d.ghost && s.vsGhost) dmg *= s.vsGhost;
   if (d.status.defend) dmg *= 0.75;
+  if (d.resist) dmg *= 1 - d.resist;
   return Math.max(1, Math.round(dmg));
 }
 function healAmount(a, s, lv) {
@@ -84,7 +87,8 @@ function clearStatus(u) {
 }
 function onDeath(B, d, ev, info, rng) {
   clearStatus(d);
-  if (has(d, 'shenyou') && rng() < 0.25) {
+  const sy = tier(d, 'shenyou', 0.25, 0.45);
+  if (sy && rng() < sy) {
     d.hp = d.maxHp;
     ev.push({ t: 'revive', u: d, hp: d.hp, text: '神佑复生' });
     return;
@@ -96,6 +100,13 @@ function damage(B, d, dmg, ev, info, rng, list) {
   const e = { u: d, dmg, crit: !!info.crit, hp: d.hp, dead: d.hp <= 0 };
   if (list) list.push(e); else ev.push({ t: 'hit', ...e });
   if (d.hp <= 0) onDeath(B, d, ev, info, rng);
+  else if (d.enrage && !d.status.enraged && d.hp < d.maxHp * 0.4) {
+    // 首领残血狂暴：伤害与灵力大涨，直到战斗结束
+    d.status.enraged = true;
+    d.status.buffs.enrage = { stat: 'atk', pct: 0.35, turns: 99 };
+    d.status.buffs.enrage2 = { stat: 'mpow', pct: 0.35, turns: 99 };
+    ev.push({ t: 'status', u: d, text: '狂暴！', color: '#ff4a2a' });
+  }
 }
 function heal(u, amt) {
   const before = u.hp;
@@ -107,15 +118,16 @@ function meleeHit(B, a, d, mult, rng, ev, critBonus = 0, allowCounter = true) {
   ev.push({ t: 'swing', u: a, tgt: d });
   const r = physDamage(a, d, mult, rng, critBonus);
   damage(B, d, r.dmg, ev, { crit: r.crit, noRevive: d.ghost && has(a, 'qugui') }, rng);
-  if (has(a, 'xixue') && isAlive(a)) {
-    const h = heal(a, Math.round(r.dmg * 0.25));
+  const xx = tier(a, 'xixue', 0.25, 0.4);
+  if (xx && isAlive(a)) {
+    const h = heal(a, Math.round(r.dmg * xx));
     if (h > 0) ev.push({ t: 'heal', u: a, amt: h, hp: a.hp });
   }
   if (has(a, 'du') && isAlive(d) && rng() < 0.3) {
     d.status.poison = { pct: 0.05, turns: 3 };
     ev.push({ t: 'status', u: d, text: '中毒', color: '#7ad84a' });
   }
-  if (allowCounter && isAlive(d) && isAlive(a) && has(d, 'fanji') && !d.status.seal && rng() < 0.3) {
+  if (allowCounter && isAlive(d) && isAlive(a) && tier(d, 'fanji', 0.3, 0.45) && !d.status.seal && rng() < tier(d, 'fanji', 0.3, 0.45)) {
     ev.push({ t: 'status', u: d, text: '反击', color: '#ffb040' });
     meleeHit(B, d, a, 0.8, rng, ev, 0, false);
   }
@@ -157,7 +169,7 @@ function doAttack(B, u, action, rng, ev) {
   if (!tgt) return ev;
   ev.push({ t: 'approach', u, tgt });
   meleeHit(B, u, tgt, 1, rng, ev);
-  if (isAlive(u) && isAlive(tgt) && has(u, 'lianji') && rng() < 0.35) {
+  if (isAlive(u) && isAlive(tgt) && tier(u, 'lianji', 0.35, 0.5) && rng() < tier(u, 'lianji', 0.35, 0.5)) {
     ev.push({ t: 'status', u, text: '连击', color: '#ffe060' });
     meleeHit(B, u, tgt, 0.75, rng, ev);
   }
@@ -206,23 +218,34 @@ function doSkill(B, u, action, rng, ev) {
     }
     case 'magic': case 'true': case 'percent': {
       const pool = enemiesOf(B, u);
-      const tg = s.target === 'enemyGroup' ? groupTargets(B, u, action.target, n, rng, pool) : [fixEnemyTarget(B, u, action.target, rng)].filter(Boolean);
+      let tg = s.target === 'enemyGroup' ? groupTargets(B, u, action.target, n, rng, pool) : [fixEnemyTarget(B, u, action.target, rng)].filter(Boolean);
+      for (let rep = 0; rep < 2 && tg.length; rep++) {
       const list = [];
       const after = [];
       for (const t of tg) {
-        let dmg;
+        let dmg, crit = false;
         if (s.kind === 'true') dmg = Math.round((eff(u, 'mpow') * s.mult + lv * 3 + s.flat) * (0.95 + rng() * 0.1));
         else if (s.kind === 'percent') {
           if (rng() > s.rate) { list.push({ u: t, dmg: 0, miss: true, hp: t.hp }); continue; }
           dmg = Math.min(Math.round(t.hp * s.pct * (t.boss ? 0.5 : 1)), lv * 25 + 150);
-        } else dmg = magicDamage(u, t, s, lv, rng);
-        damage(B, t, Math.max(1, dmg), after, { noRevive: t.ghost && !!s.vsGhost }, rng, list);
+        } else {
+          dmg = magicDamage(u, t, s, lv, rng);
+          if (has(u, 'fs_baoji') && rng() < 0.15) { dmg = Math.round(dmg * 1.5); crit = true; }
+        }
+        if (rep) dmg = Math.round(dmg * 0.7);
+        if (t.resist && s.kind === 'true') dmg = Math.round(dmg * (1 - t.resist));
+        damage(B, t, Math.max(1, dmg), after, { crit, noRevive: t.ghost && !!s.vsGhost }, rng, list);
         if (isAlive(t) && s.poison && rng() < s.poison) { t.status.poison = { pct: s.poisonPct || 0.05, turns: 3 }; after.push({ t: 'status', u: t, text: '中毒', color: '#7ad84a' }); }
         if (isAlive(t) && s.slow) { t.status.buffs.slow = { stat: 'spd', pct: -s.slow, turns: 3 }; after.push({ t: 'status', u: t, text: '减速', color: '#a0a0ff' }); }
         if (s.drainMp) { const m = Math.min(t.mp, Math.round(dmg * s.drainMp)); t.mp -= m; u.mp = Math.min(u.maxMp, u.mp + m); }
       }
       ev.push({ t: 'spell', u, fx: s.fx, list });
       ev.push(...after);
+      // 法术连击：再施放一次（七成威力）
+      tg = tg.filter(isAlive);
+      if (rep || s.kind !== 'magic' || !has(u, 'fs_lianji') || !isAlive(u) || rng() >= 0.25) break;
+      ev.push({ t: 'status', u, text: '法术连击', color: '#ffe060' });
+      }
       break;
     }
     case 'heal': case 'hot': {
@@ -436,8 +459,8 @@ export function endRound(B, rng = Math.random) {
       if (h > 0) ev.push({ t: 'heal', u, amt: h, hp: u.hp });
       if (--st.regen.turns <= 0) st.regen = null;
     }
-    if (has(u, 'zaisheng')) { const h = heal(u, Math.round(u.level * 1.5 + 10)); if (h > 0) ev.push({ t: 'heal', u, amt: h, hp: u.hp }); }
-    if (has(u, 'mingsi')) u.mp = Math.min(u.maxMp, u.mp + Math.round(u.level / 2 + 5));
+    if (has(u, 'zaisheng') || has(u, 'gj_zaisheng')) { const h = heal(u, Math.round(has(u, 'gj_zaisheng') ? u.level * 4 + 30 : u.level * 1.5 + 10)); if (h > 0) ev.push({ t: 'heal', u, amt: h, hp: u.hp }); }
+    if (has(u, 'mingsi') || has(u, 'gj_mingsi')) u.mp = Math.min(u.maxMp, u.mp + Math.round(has(u, 'gj_mingsi') ? u.level * 1.2 + 15 : u.level / 2 + 5));
     if (st.seal > 0) st.seal--;
     if (st.rest > 0) st.rest--;
     st.defend = false;

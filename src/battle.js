@@ -6,6 +6,9 @@ import { G, countItem, removeItem, petUnit } from './state.js';
 import { tween, wait, ease, esc } from './util.js';
 import { Audio2 } from './audio.js';
 import { $, toast } from './ui.js';
+import { vipLevel } from './mall.js';
+
+export const fast = () => BT.active && vipLevel() >= 2 && !!G.S.flags.fastBattle;
 
 const VW = 960, VH = 640;
 export const BT = { active: false, B: null, bg: null, t: 0, fx: [], floats: [], phase: 'idle', auto: false, sel: null, shake: 0, flash: 0, intro: 0 };
@@ -51,7 +54,7 @@ export function startBattle(B, bg, onEnd) {
 function buildUI() {
   const ui = $('#battle-ui');
   ui.innerHTML = `
-    <div id="bt-top"><span id="bt-round">第 1 回合</span><button id="bt-auto" class="btn small">自动</button></div>
+    <div id="bt-top"><span id="bt-round">第 1 回合</span><button id="bt-auto" class="btn small">自动</button>${vipLevel() >= 2 ? '<button id="bt-fast" class="btn small">二倍速</button>' : ''}</div>
     <div id="bt-hint"></div>
     <div id="bt-cmd" class="hidden"><div id="bt-who"></div>
       <button data-c="attack">攻击<kbd>A</kbd></button><button data-c="skill">法术<kbd>W</kbd></button><button data-c="item">道具<kbd>E</kbd></button>
@@ -61,6 +64,8 @@ function buildUI() {
     <div id="bt-result" class="hidden"></div>`;
   ui.classList.remove('hidden');
   $('#bt-auto').onclick = () => toggleAuto();
+  const fb = $('#bt-fast');
+  if (fb) { const upd = () => fb.classList.toggle('on', !!G.S.flags.fastBattle); upd(); fb.onclick = () => { G.S.flags.fastBattle = !G.S.flags.fastBattle; upd(); }; }
   for (const b of ui.querySelectorAll('#bt-cmd button')) b.onclick = () => command(b.dataset.c);
   refreshAutoBtn();
 }

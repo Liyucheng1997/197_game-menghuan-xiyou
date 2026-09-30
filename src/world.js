@@ -42,6 +42,7 @@ export function enterMap(id, tx, ty, opts = {}) {
   W.trail = Array.from({ length: 80 }, () => ({ x: W.px, y: W.py, dir: 'down' }));
   W.weather = [];
   G.S.map = id; G.S.x = tx; G.S.y = ty;
+  if (G.S.unlocked) G.S.unlocked[id] = 1;
   Audio2.play(map.music);
   if (!opts.silent) banner(map.name, map.encounter ? `怪物等级 ${map.encounter.lv[0]}~${map.encounter.lv[1]}` : '');
   if (map.encounter && map.encounter.lv[0] > G.S.level + 4) toast(`<b style="color:#ff8a6a">此地妖怪强大，请小心行事！</b>`, 2600);
@@ -219,7 +220,7 @@ export function transition(fn) {
 function updateWeather(dt) {
   const kind = W.map.weather;
   if (!kind) return;
-  const max = { petal: 26, leaf: 18, bubble: 20, dust: 30, ember: 26, cloud: 8 }[kind] || 0;
+  const max = { petal: 26, leaf: 18, bubble: 20, dust: 30, ember: 26, cloud: 8, snow: 40 }[kind] || 0;
   while (W.weather.length < max) W.weather.push(newParticle(kind, true));
   for (const p of W.weather) {
     p.x += p.vx * dt / 1000; p.y += p.vy * dt / 1000; p.a += p.va * dt / 1000; p.life -= dt;
@@ -234,6 +235,7 @@ function newParticle(kind, init) {
   if (kind === 'dust') Object.assign(p, { x: init ? r() * VW : -10, y: r() * VH, vx: 60 + r() * 60, vy: 5 - r() * 10, s: 1 + r() * 1.5 });
   if (kind === 'bubble') Object.assign(p, { y: init ? r() * VH : VH + 10, vy: -20 - r() * 20, vx: 0, s: 2 + r() * 3 });
   if (kind === 'ember') Object.assign(p, { y: init ? r() * VH : VH + 10, vy: -15 - r() * 25, vx: -5 + r() * 10, s: 1.2 + r() * 1.6 });
+  if (kind === 'snow') Object.assign(p, { vx: -10 + r() * 20, vy: 30 + r() * 30, s: 1.5 + r() * 2 });
   if (kind === 'cloud') Object.assign(p, { x: init ? r() * VW : -80, y: r() * VH, vx: 12 + r() * 10, vy: 0, s: 30 + r() * 30, life: 40000 });
   return p;
 }
@@ -246,6 +248,7 @@ function drawWeather(ctx) {
     else if (kind === 'dust') { ctx.fillStyle = 'rgba(230,200,150,.5)'; ctx.fillRect(0, 0, p.s * 3, p.s); }
     else if (kind === 'bubble') { ctx.strokeStyle = 'rgba(220,245,255,.6)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(0, 0, p.s, 0, 7); ctx.stroke(); }
     else if (kind === 'ember') { ctx.fillStyle = W.map.theme === 'underworld' || W.map.theme === 'web' ? 'rgba(150,180,255,.7)' : 'rgba(255,160,60,.75)'; ctx.beginPath(); ctx.arc(0, 0, p.s, 0, 7); ctx.fill(); }
+    else if (kind === 'snow') { ctx.fillStyle = 'rgba(255,255,255,.85)'; ctx.beginPath(); ctx.arc(0, 0, p.s, 0, 7); ctx.fill(); }
     else if (kind === 'cloud') { ctx.fillStyle = 'rgba(255,255,255,.35)'; ctx.beginPath(); ctx.ellipse(0, 0, p.s, p.s * 0.4, 0, 0, 7); ctx.fill(); }
     ctx.restore();
   }
@@ -295,7 +298,7 @@ export function render(ctx, opts = {}) {
     if (it.s) ctx.drawImage(it.s.img, it.s.x, it.s.y);
     else if (it.player) {
       drawChibi(ctx, W.px, W.py + T / 2 - 4, role.look, { dir: W.dir, t, moving: W.moving, weapon: role.weapon });
-      nameTag(ctx, W.px, W.py + T / 2 + 10, S.name, '#7dff7a', S.title !== '初出茅庐' ? S.title : null);
+      nameTag(ctx, W.px, W.py + T / 2 + 10, S.name, (S.mall?.spent || 0) >= 12000 ? '#ffd040' : '#7dff7a', S.title !== '初出茅庐' ? S.title : null);
     } else if (it.follower) {
       const f = it.follower;
       const mv = W.moving;

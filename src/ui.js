@@ -72,8 +72,45 @@ export function dialog({ look, name, title, pages, options }) {
   });
 }
 
+// 记录面板内各滚动区域的位置（按 DOM 下标路径定位），重绘后原样恢复
+function scrollSnapshot(root) {
+  const out = [];
+  const walk = (node, path) => {
+    [...node.children].forEach((c, i) => {
+      const p = [...path, i];
+      if (c.scrollTop > 0) out.push([p, c.scrollTop]);
+      if (c.children.length) walk(c, p);
+    });
+  };
+  if (root.scrollTop > 0) out.push([[], root.scrollTop]);
+  walk(root, []);
+  return out;
+}
+function scrollRestore(root, snap) {
+  for (const [path, top] of snap) {
+    let n = root;
+    for (const i of path) { n = n?.children[i]; if (!n) break; }
+    if (n) n.scrollTop = top;
+  }
+}
+
 export function panel(title, content, opts = {}) {
   const p = $('#panel');
+  const id = opts.id || title;
+  // 同一面板重绘（加点、学技能、买东西等）时复用窗口：不重播弹出动画、不重置滚动位置，避免整页闪一下
+  const old = p.querySelector('.win');
+  if (old && UI.panelOpen === id && !p.classList.contains('hidden')) {
+    const body = old.querySelector('.win-body');
+    const snap = scrollSnapshot(body);
+    old.querySelector('.win-title span').innerHTML = title;
+    old.style.width = (opts.width || 560) + 'px';
+    body.innerHTML = '';
+    if (typeof content === 'string') body.innerHTML = content; else if (content) body.append(content);
+    UI.panelClose = opts.onClose;
+    // 调用方会在拿到 body 后同步填充内容，等它填完再恢复滚动（微任务在绘制前执行，不会闪）
+    queueMicrotask(() => scrollRestore(body, snap));
+    return body;
+  }
   p.innerHTML = '';
   const win = el(`<div class="win" style="width:${opts.width || 560}px"><div class="win-title"><span>${title}</span><button class="win-x">✕</button></div><div class="win-body"></div></div>`);
   const body = win.querySelector('.win-body');

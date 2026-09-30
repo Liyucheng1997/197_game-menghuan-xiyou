@@ -189,7 +189,7 @@ function donghai() {
   m.obj('wreck', 33, 29, { w: 5, h: 2 });
   m.obj('boat', 42, 14); m.obj('boat', 40, 36);
   m.npc('yufu', 24, 16, 'down').npc('dh_girl', 12, 12, 'down');
-  m.exit(1, 22, 'jianye', 61, 24, '建邺城').exit(36, 33, 'chenchuan', 20, 23, '沉船');
+  m.exit(1, 22, 'jianye', 61, 24, '建邺城').exit(36, 33, 'chenchuan', 20, 23, '沉船').exit(38, 12, 'longgong', 32, 45, '东海龙宫');
   m.scatter('tree', 30, [0, 0, 42, 40], { kinds: ['palm'], on: [SAND, GRASS] });
   m.scatter('tree', 16, [0, 0, 24, 16], { kinds: ['round', 'pine'] });
   m.scatter('shell', 26, null, { on: [SAND] }).scatter('rock', 14, null, { on: [SAND], color: '#b8aa98' }).scatter('coral', 8, [30, 0, 16, 40], { on: [SAND] });
@@ -259,6 +259,7 @@ function changan() {
   for (let x = 8; x < 86; x += 7) { if (Math.abs(x - 44) < 4 || Math.abs(x - 22) < 3 || Math.abs(x - 68) < 3) continue; m.tree(x, 19, 'willow'); m.tree(x, 35, 'willow'); }
   m.npc('ca_weapon', 9, 16).npc('ca_armor', 17, 16).npc('ca_guard', 34, 16).npc('ca_acc', 51, 16).npc('ca_drug', 60, 16).npc('ca_grocer', 74, 16).npc('ca_bank', 82, 16);
   m.npc('ca_inn', 9, 30).npc('yizhan', 28, 30).npc('yuantiangang', 37, 30).npc('ca_monk', 54, 30).npc('xiayi', 63, 30).npc('petfairy', 75, 30);
+  m.npc('taibai', 19, 47).npc('tower_keeper', 54, 47).npc('mijing', 70, 47).npc('fuzi', 16, 37).npc('arena', 84, 37).npc('zhenbao', 58, 37);
   m.npc('xiaoer', 9, 47).npc('zhongkui', 48, 34, 'down').npc('ca_scholar', 61, 47).npc('ca_girl', 30, 47).npc('ca_beggar', 40, 50).npc('ca_kid', 79, 47);
   m.exit(88, 31, 'jiangnan', 4, 8, '江南野外').exit(1, 31, 'guojing', 72, 30, '大唐国境');
   m.scatter('tree', 40, [2, 50, 86, 12], { kinds: ['cherry', 'willow', 'round'] });
@@ -277,7 +278,7 @@ function guojing() {
   m.obj('campfire', 25, 11); m.obj('fence', 18, 15); m.obj('fence', 20, 15); m.obj('fence', 30, 15); m.obj('fence', 32, 15);
   m.point(26, 12);
   m.npc('gj_hunter', 52, 30, 'down').npc('gj_monk', 10, 38, 'down');
-  m.exit(74, 30, 'changan', 3, 31, '长安城').exit(1, 40, 'jingwai', 76, 40, '大唐境外');
+  m.exit(74, 30, 'changan', 3, 31, '长安城').exit(1, 40, 'jingwai', 76, 40, '大唐境外').exit(30, 52, 'youming', 61, 8, '幽冥地府');
   m.scatter('tree', 190, null, { kinds: ['pine', 'pine', 'round', 'maple'] });
   m.scatter('rock', 24).scatter('bush', 30).scatter('stump', 12);
   return m.build();
@@ -292,7 +293,7 @@ function jingwai() {
   m.circle(30, 14, 5, 3.5, SAND, 0.2);
   m.point(30, 14);
   m.npc('tudi', 46, 31, 'down').npc('jw_merchant', 60, 40, 'down');
-  m.exit(78, 40, 'guojing', 3, 40, '大唐国境').exit(9, 9, 'baigu', 25, 34, '白骨洞').exit(68, 7, 'huaguo', 34, 44, '花果山');
+  m.exit(78, 40, 'guojing', 3, 40, '大唐国境').exit(9, 9, 'baigu', 25, 34, '白骨洞').exit(68, 7, 'huaguo', 34, 44, '花果山').exit(6, 46, 'huoyan', 67, 11, '火焰山');
   m.scatter('tree', 60, null, { kinds: ['dead', 'dead', 'pine'], on: [DARK, SAND, GRASS] });
   m.scatter('rock', 40, null, { on: [DARK, SAND], color: '#a88a6a' }).scatter('bones', 30, null, { on: [DARK, SAND] }).scatter('skull', 10, null, { on: [DARK, SAND] });
   return m.build();
@@ -319,9 +320,116 @@ function huaguo() {
   m.circle(16, 36, 9, 5, FLOWER, 0.3).circle(52, 38, 8, 5, FLOWER, 0.3);
   m.path([[34, 49], [34, 36], [44, 26], [40, 14]], 2.2, ROAD).path([[34, 36], [18, 30]], 2, ROAD);
   m.npc('hg_monkey', 40, 15, 'down');
-  m.exit(34, 47, 'jingwai', 68, 9, '大唐境外');
+  m.point(46, 22);
+  m.exit(34, 47, 'jingwai', 68, 9, '大唐境外').exit(6, 44, 'beiju', 4, 47, '北俱芦洲');
   m.scatter('tree', 140, null, { kinds: ['peach', 'peach', 'round', 'pine', 'cherry'] });
   m.scatter('rock', 20).scatter('bush', 30);
+  return m.build();
+}
+
+
+// ---------------- 50 级以后的新区域 ----------------
+function longgong() {
+  const m = new MB('longgong', '东海龙宫', 64, 48, { theme: 'sea', base: SAND, music: 'donghai', spawn: [32, 43], encounter: { lv: [50, 66], mobs: ['yecha', 'bangjing', 'jiaoren', 'guijiang'] }, weather: 'bubble', dark: 0.12 });
+  m.circle(10, 10, 7, 5, WATER, 0.3).circle(54, 10, 6, 4, WATER, 0.3).circle(8, 38, 6, 4, DEEP, 0.3).circle(56, 38, 7, 4, WATER, 0.3);
+  m.circle(32, 13, 12, 5, STONE, 0.1);
+  m.path([[32, 46], [32, 18]], 3, STONE).path([[10, 28], [54, 28]], 2.4, ROAD);
+  m.house(25, 3, 14, 7, { style: 'coral', sign: '水晶宫' });
+  m.house(7, 18, 7, 5, { style: 'coral' }); m.house(50, 18, 7, 5, { style: 'coral' });
+  m.obj('pillar', 21, 14, { color: '#3a8ac8' }); m.obj('pillar', 43, 14, { color: '#3a8ac8' });
+  m.point(32, 15);
+  m.npc('lg_guicheng', 37, 17, 'down').npc('lg_xia', 20, 31, 'down');
+  m.exit(32, 46, 'donghai', 37, 13, '东海湾');
+  m.scatter('coral', 40, null, { on: [SAND] }).scatter('shell', 30, null, { on: [SAND] }).scatter('rock', 14, null, { on: [SAND], color: '#6a9ab0' }).scatter('tree', 12, null, { kinds: ['palm'], on: [SAND] });
+  return m.build();
+}
+
+function beiju() {
+  const m = new MB('beiju', '北俱芦洲', 72, 52, { theme: 'snow', music: 'jiaowai', spawn: [8, 45], encounter: { lv: [62, 80], mobs: ['xuelang', 'bingyao', 'xueguai', 'fengbo'] }, weather: 'snow' });
+  m.circle(38, 6, 14, 4, ROCK, 0.35).circle(66, 32, 5, 8, ROCK, 0.3).circle(10, 12, 7, 5, ROCK, 0.3);
+  m.circle(42, 28, 7, 4, WATER, 0.3).circle(18, 32, 5, 3, WATER, 0.2);
+  m.path([[3, 48], [18, 43], [30, 38], [44, 40], [56, 36], [60, 20], [60, 6]], 2.6, ROAD).path([[30, 38], [24, 24], [28, 15]], 2, ROAD);
+  m.house(12, 37, 6, 4, { style: 'hut' }); m.house(48, 43, 6, 4, { style: 'hut' });
+  m.point(28, 14);
+  m.npc('bj_elder', 20, 43, 'down').npc('bj_shop', 44, 43, 'down');
+  m.exit(3, 48, 'huaguo', 7, 43, '花果山').exit(60, 5, 'nantian', 40, 49, '南天门');
+  m.scatter('tree', 130, null, { kinds: ['snowpine', 'snowpine', 'snowpine', 'dead'] });
+  m.scatter('rock', 22, null, { color: '#a8b8c8' }).scatter('stump', 10);
+  return m.build();
+}
+
+function huoyan() {
+  const m = new MB('huoyan', '火焰山', 70, 50, { theme: 'volcano', base: DARK, music: 'title', spawn: [65, 10], encounter: { lv: [76, 92], mobs: ['huojing', 'niujiang', 'yanhu'] }, weather: 'ember' });
+  m.circle(18, 12, 8, 4, LAVA, 0.4).circle(40, 42, 6, 3, LAVA, 0.4).circle(10, 36, 5, 3, LAVA, 0.3).circle(60, 26, 4, 3, LAVA, 0.3);
+  m.circle(34, 3, 10, 3, ROCK, 0.3).circle(26, 48, 12, 3, ROCK, 0.3).circle(2, 20, 3, 7, ROCK, 0.3);
+  m.path([[67, 10], [56, 13], [44, 18], [34, 24], [28, 35], [16, 40], [3, 44]], 2.6, ROAD).path([[44, 18], [44, 15]], 2, ROAD).path([[44, 18], [52, 28], [56, 40]], 2, ROAD);
+  m.house(22, 28, 8, 5, { style: 'dark', sign: '火云洞' });
+  m.house(40, 8, 8, 5, { style: 'red', sign: '芭蕉洞' });
+  m.house(52, 33, 8, 5, { style: 'red', sign: '积雷山' });
+  m.point(26, 35).point(44, 15).point(56, 40);
+  m.npc('hy_tudi', 60, 15, 'down').npc('hy_shop', 34, 20, 'down');
+  m.exit(68, 10, 'jingwai', 7, 45, '大唐境外').exit(3, 44, 'wudi', 55, 41, '无底洞');
+  m.scatter('tree', 40, null, { kinds: ['dead'], on: [DARK] });
+  m.scatter('rock', 34, null, { on: [DARK], color: '#6a4a3a' }).scatter('bones', 16, null, { on: [DARK] }).scatter('torch', 10, null, { on: [DARK] });
+  return m.build();
+}
+
+function wudi() {
+  const m = new MB('wudi', '无底洞', 60, 46, { theme: 'web', base: WALL, music: 'title', spawn: [52, 39], dark: 0.4, encounter: { lv: [90, 108], mobs: ['shujing', 'xiezi', 'zhizhunv', 'kuloujiang'] }, weather: 'ember' });
+  m.circle(52, 38, 7, 5, CAVE, 0.1);
+  m.path([[52, 38], [40, 32], [30, 34], [18, 28], [10, 18], [6, 6]], 3, CAVE);
+  m.circle(30, 34, 8, 5, CAVE, 0.2).circle(14, 22, 7, 5, CAVE, 0.2).circle(40, 14, 8, 5, CAVE, 0.2).circle(6, 6, 5, 4, CAVE, 0.1);
+  m.path([[30, 34], [36, 22], [40, 14]], 3, CAVE);
+  m.circle(22, 30, 2, 1.4, WATER);
+  m.point(40, 12);
+  m.npc('wd_monk', 47, 36, 'down');
+  m.exit(56, 42, 'huoyan', 4, 43, '火焰山').exit(4, 4, 'leiyin', 59, 43, '小雷音寺');
+  m.scatter('web', 16, null, { on: [CAVE] }).scatter('bones', 18, null, { on: [CAVE] }).scatter('skull', 10, null, { on: [CAVE] }).scatter('crystal', 10, null, { on: [CAVE], edge: true });
+  for (const [x, y] of [[48, 34], [34, 30], [16, 18], [44, 10], [26, 36]]) m.obj('torch', x, y, { walk: true });
+  return m.build();
+}
+
+function nantian() {
+  const m = new MB('nantian', '南天门', 64, 52, { theme: 'heaven', base: GRASS, music: 'changan', spawn: [40, 47], encounter: { lv: [104, 120], mobs: ['yaobing', 'tianbing', 'leigong', 'jinjia'] }, weather: 'cloud' });
+  m.circle(12, 42, 9, 6, CLOUD, 0.35).circle(56, 10, 8, 6, CLOUD, 0.35).circle(8, 10, 6, 5, CLOUD, 0.3).circle(58, 46, 6, 4, CLOUD, 0.3).circle(24, 38, 5, 3, WATER, 0.2);
+  m.path([[40, 50], [40, 30], [32, 16]], 3, STONE).path([[8, 30], [58, 30]], 3, STONE).path([[40, 38], [54, 38]], 2, STONE);
+  m.circle(32, 14, 8, 3, STONE, 0.1);
+  m.house(24, 3, 16, 7, { style: 'palace', sign: '南天门' });
+  m.house(5, 19, 9, 6, { style: 'palace', sign: '天兵营' }); m.house(50, 19, 9, 6, { style: 'red', sign: '斗牛宫' });
+  for (const x of [20, 26, 38, 44]) m.obj('pillar', x, 12, { color: '#d8b040' });
+  m.point(32, 15).point(54, 39);
+  m.npc('nt_general', 36, 32, 'down').npc('nt_shop', 46, 44, 'down');
+  m.exit(40, 50, 'beiju', 60, 6, '北俱芦洲');
+  m.scatter('cloud', 30, null, { on: [CLOUD, GRASS] }).scatter('tree', 40, null, { kinds: ['birch', 'cherry', 'birch'], on: [GRASS] }).scatter('stonelamp', 10, null, { on: [GRASS] }).scatter('lotus', 8, null, { on: [GRASS] });
+  return m.build();
+}
+
+function youming() {
+  const m = new MB('youming', '幽冥地府', 66, 50, { theme: 'underworld', base: DARK, music: 'title', spawn: [60, 9], dark: 0.3, encounter: { lv: [118, 136], mobs: ['yinbing', 'gouhun', 'wuchang', 'youhun'] }, weather: 'ember' });
+  m.path([[0, 26], [66, 23]], 3, WATER);
+  m.path([[61, 8], [50, 12], [40, 20], [38, 30], [32, 42]], 2.6, STONE).path([[38, 30], [20, 36], [10, 40]], 2, STONE).path([[40, 20], [22, 14], [13, 13]], 2, STONE);
+  m.house(24, 33, 16, 7, { style: 'dark', sign: '森罗殿' });
+  m.house(4, 4, 8, 5, { style: 'dark', sign: '翠云宫' });
+  m.point(10, 41);
+  m.npc('ym_panguan', 32, 42, 'down').npc('ym_diting', 13, 12, 'down');
+  m.exit(62, 6, 'guojing', 31, 51, '大唐国境');
+  m.scatter('tree', 50, null, { kinds: ['ghost', 'dead'], on: [DARK] });
+  m.scatter('bluefire', 24, null, { on: [DARK] }).scatter('skull', 20, null, { on: [DARK] }).scatter('bones', 20, null, { on: [DARK] });
+  return m.build();
+}
+
+function leiyin() {
+  const m = new MB('leiyin', '小雷音寺', 64, 48, { theme: 'leiyin', base: SAND, music: 'jiaowai', spawn: [58, 42], encounter: { lv: [132, 150], mobs: ['yaoseng', 'jingang', 'mohou'] }, weather: 'petal' });
+  m.circle(10, 10, 7, 4, ROCK, 0.3).circle(56, 8, 6, 4, ROCK, 0.3).circle(20, 40, 6, 3, WATER, 0.2);
+  m.path([[60, 44], [46, 40], [32, 30], [32, 16]], 3, STONE).path([[32, 30], [14, 26]], 2.4, STONE);
+  m.circle(32, 14, 10, 4, STONE, 0.1).circle(14, 25, 5, 3, STONE, 0.1);
+  m.house(22, 2, 20, 8, { style: 'temple', sign: '小雷音寺' });
+  for (const x of [22, 28, 36, 42]) m.obj('pillar', x, 12, { color: '#c8903a' });
+  m.point(32, 16).point(14, 25);
+  m.npc('ly_mile', 50, 38, 'down').npc('ly_shop', 42, 44, 'down');
+  m.exit(60, 44, 'wudi', 5, 5, '无底洞');
+  m.scatter('tree', 70, null, { kinds: ['gold', 'gold', 'pine'], on: [SAND] });
+  m.scatter('stonelamp', 10, null, { on: [SAND] }).scatter('lotus', 10, null, { on: [SAND] }).scatter('rock', 12, null, { on: [SAND], color: '#a88a5a' });
   return m.build();
 }
 
@@ -360,7 +468,7 @@ function schoolMap(id) {
   return m.build();
 }
 
-const BUILDERS = { jianye, donghai, chenchuan, jiangnan, changan, guojing, jingwai, baigu, huaguo };
+const BUILDERS = { jianye, donghai, chenchuan, jiangnan, changan, guojing, jingwai, baigu, huaguo, longgong, beiju, huoyan, wudi, nantian, youming, leiyin };
 const cache = {};
 export function getMap(id) {
   if (cache[id]) return cache[id];
@@ -370,7 +478,10 @@ export function getMap(id) {
 }
 export const MAP_IDS = Object.keys(BUILDERS);
 export const ALL_MAP_IDS = [...MAP_IDS, ...Object.keys(SCHOOLS).map(s => 's_' + s)];
-export const MAP_NAMES = { jianye: '建邺城', donghai: '东海湾', chenchuan: '沉船', jiangnan: '江南野外', changan: '长安城', guojing: '大唐国境', jingwai: '大唐境外', baigu: '白骨洞', huaguo: '花果山' };
+export const MAP_NAMES = { jianye: '建邺城', donghai: '东海湾', chenchuan: '沉船', jiangnan: '江南野外', changan: '长安城', guojing: '大唐国境', jingwai: '大唐境外', baigu: '白骨洞', huaguo: '花果山',
+  longgong: '东海龙宫', beiju: '北俱芦洲', huoyan: '火焰山', wudi: '无底洞', nantian: '南天门', youming: '幽冥地府', leiyin: '小雷音寺' };
+// 世界地图面板与驿站传送按等级排列的野外区域
+export const WORLD_ORDER = ['jianye', 'donghai', 'jiangnan', 'changan', 'guojing', 'jingwai', 'huaguo', 'longgong', 'beiju', 'huoyan', 'wudi', 'nantian', 'youming', 'leiyin'];
 for (const s in SCHOOLS) MAP_NAMES['s_' + s] = SCHOOLS[s].name;
 
 export function walkable(map, x, y) {
