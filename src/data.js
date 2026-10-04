@@ -79,7 +79,38 @@ export const RARITY = [
   { name: '精良', color: '#6fe07a' },
   { name: '稀有', color: '#5ab8ff' },
   { name: '史诗', color: '#d68aff' },
+  { name: '传说', color: '#ffa53a' },
+  { name: '神器', color: '#ff4a5a' },
 ];
+// 各品质的基础属性倍率、附加属性条数（=品质）、特效条数与特技几率见 state.js rollSpecial
+export const RARITY_MUL = [1, 1.1, 1.22, 1.38, 1.58, 1.85];
+
+// ---------------- 装备特效（被动） ----------------
+// v：每条特效的数值，可多件叠加（cap 为上限）；w：出现权重。jianyi、wujibie 只影响装备需求等级
+export const EQ_FX = {
+  shenyou: { name: '神佑', v: 0.15, cap: 0.45, w: 6, desc: '倒地时有15%几率满血复活' },
+  xixue: { name: '嗜血', v: 0.12, cap: 0.5, w: 9, desc: '物理攻击吸取12%伤害' },
+  baoji: { name: '暴击', v: 0.08, cap: 0.4, w: 9, desc: '物理暴击率+8%' },
+  kuangbao: { name: '狂暴', v: 0.4, cap: 1.2, w: 6, desc: '暴击伤害+40%' },
+  lianji: { name: '追击', v: 0.2, cap: 0.6, w: 7, desc: '普通攻击后有20%几率追加一击' },
+  pojia: { name: '破甲', v: 0.2, cap: 0.6, w: 7, desc: '物理攻击无视目标20%防御' },
+  fanzhen: { name: '反震', v: 0.25, cap: 0.75, w: 7, desc: '受到物理攻击时有25%几率反弹30%伤害' },
+  fabao: { name: '法暴', v: 0.1, cap: 0.4, w: 8, desc: '法术暴击率+10%（1.5倍伤害）' },
+  falian: { name: '法连', v: 0.15, cap: 0.45, w: 6, desc: '伤害法术有15%几率再施放一次' },
+  fachuan: { name: '法穿', v: 0.12, cap: 0.48, w: 8, desc: '法术伤害+12%' },
+  huti: { name: '护体', v: 0.08, cap: 0.32, w: 8, desc: '受到的所有伤害-8%' },
+  huichun: { name: '回春', v: 0.04, cap: 0.16, w: 8, desc: '每回合恢复4%气血' },
+  mingxiang: { name: '冥想', v: 0.05, cap: 0.2, w: 6, desc: '每回合恢复5%魔法' },
+  xunjie: { name: '迅捷', v: 0.12, cap: 0.48, w: 7, desc: '速度+12%' },
+  qiangti: { name: '强体', v: 0.1, cap: 0.4, w: 7, desc: '气血上限+10%' },
+  jubao: { name: '聚宝', v: 0.3, cap: 1.5, w: 8, desc: '战斗获得的银两+30%' },
+  fuyuan: { name: '福缘', v: 0.1, cap: 0.5, w: 6, desc: '获得的经验+10%' },
+  xunbao: { name: '寻宝', v: 0.5, cap: 2, w: 6, desc: '野外装备、宝箱掉落率+50%' },
+  jianyi: { name: '简易', w: 5, desc: '装备等级需求-5' },
+  wujibie: { name: '无级别限制', w: 2, desc: '任何等级都能装备' },
+};
+// 装备特技（战斗中主动使用，见 SKILLS 中 tj 开头的技能）
+export const EQ_TJ = ['tj_pxkg', 'tj_rdjp', 'tj_tbdl', 'tj_jxlm', 'tj_lhjz', 'tj_yszl', 'tj_lyj', 'tj_shsp', 'tj_jqj', 'tj_chpd', 'tj_nzs', 'tj_qls', 'tj_fxtd'];
 
 // ---------------- 门派 ----------------
 export const SCHOOLS = {
@@ -201,6 +232,21 @@ export const SKILLS = {
   fs_baoji: { name: '法术暴击', kind: 'trait', pet: true, rare: true, desc: '法术伤害有15%几率造成1.5倍暴击。' },
   mozhixin: { name: '魔之心', kind: 'trait', pet: true, rare: true, bonus: { mpowPct: 0.2 }, desc: '灵力提升20%。' },
   yeshen: { name: '夜战', kind: 'trait', pet: true, bonus: { hpPct: 0.08 }, desc: '气血提升8%。' },
+
+  // ---------- 装备特技：附在装备上，战斗中直接使用，每场有次数限制 ----------
+  tj_pxkg: { name: '破血狂攻', tj: true, uses: 3, kind: 'phys', hits: 2, mult: 1.05, mp: lv => 10 + (lv >> 2), fx: 'slash', desc: '特技：狂攻目标两次，每次造成105%伤害。' },
+  tj_rdjp: { name: '弱点击破', tj: true, uses: 3, kind: 'phys', hits: 1, mult: 1.45, pierce: 0.6, mp: lv => 10 + (lv >> 2), fx: 'claw', desc: '特技：直击要害，无视目标60%防御。' },
+  tj_tbdl: { name: '天崩地裂', tj: true, uses: 2, kind: 'phys', target: 'enemyGroup', count: () => 4, mult: 0.95, pierce: 0.3, mp: lv => 20 + (lv >> 1), fx: 'rock', desc: '特技：山崩地裂，物理攻击四名敌人。' },
+  tj_jxlm: { name: '九霄雷鸣', tj: true, uses: 2, kind: 'magic', target: 'enemyGroup', count: () => 5, mult: 1.0, flat: 60, mp: lv => 20 + (lv >> 1), fx: 'thunder', desc: '特技：九天神雷轰击五名敌人。' },
+  tj_lhjz: { name: '罗汉金钟', tj: true, uses: 1, kind: 'buff', target: 'team', stat: 'def', pct: 0.5, turns: 3, mp: lv => 20 + (lv >> 2), fx: 'buffGold', desc: '特技：全队防御+50%，持续3回合。' },
+  tj_yszl: { name: '野兽之力', tj: true, uses: 2, kind: 'buff', target: 'team', stat: 'atk', pct: 0.25, turns: 3, mp: lv => 20 + (lv >> 2), fx: 'buffRed', desc: '特技：全队伤害+25%，持续3回合。' },
+  tj_lyj: { name: '流云诀', tj: true, uses: 2, kind: 'buff', target: 'team', stat: 'spd', pct: 0.3, turns: 3, mp: lv => 15 + (lv >> 2), fx: 'buffBlue', desc: '特技：全队速度+30%，持续3回合。' },
+  tj_shsp: { name: '四海升平', tj: true, uses: 2, kind: 'heal', target: 'allyGroup', count: () => 5, mult: 0.2, flat: 50, pctHp: 0.3, mp: lv => 25 + (lv >> 1), fx: 'heal', desc: '特技：全队恢复30%气血。' },
+  tj_jqj: { name: '晶清诀', tj: true, uses: 2, kind: 'heal', target: 'allyGroup', count: () => 5, mult: 0.1, flat: 30, pctHp: 0.15, cleanse: true, mp: lv => 20 + (lv >> 1), fx: 'holy', desc: '特技：全队恢复15%气血，并解除中毒与封印。' },
+  tj_chpd: { name: '慈航普渡', tj: true, uses: 1, kind: 'revive', target: 'allyDead', all: true, pct: 0.6, mp: lv => 30 + (lv >> 1), fx: 'holy', desc: '特技：复活全部倒地队友并恢复60%气血。' },
+  tj_nzs: { name: '凝滞术', tj: true, uses: 2, kind: 'seal', turns: 2, rate: 0.9, mp: lv => 15 + (lv >> 2), fx: 'seal', desc: '特技：极高几率封印一名敌人2回合。' },
+  tj_qls: { name: '气疗术', tj: true, uses: 3, kind: 'heal', target: 'ally', mult: 0.3, flat: 60, pctHp: 0.45, mp: lv => 15 + (lv >> 2), fx: 'heal', desc: '特技：为一名队友恢复45%气血。' },
+  tj_fxtd: { name: '放下屠刀', tj: true, uses: 2, kind: 'debuff', stat: ['atk', 'mpow', 'def'], pct: 0.35, turns: 3, mp: lv => 15 + (lv >> 2), fx: 'curse', desc: '特技：目标伤害、灵力、防御-35%，持续3回合。' },
 };
 export const PET_TRAIT_POOL = ['bisha', 'lianji', 'xixue', 'fanji', 'qiangli', 'fangyu', 'minjie', 'zaisheng', 'du', 'mingsi', 'leiji', 'luoyan', 'shuigong', 'liehuo', 'yeshen'];
 export const PET_RARE_POOL = ['shenyou', 'benlei', 'shuiman', 'taishan', 'diyu', 'qugui'];
@@ -226,6 +272,11 @@ export const ITEMS = {
   xianlu: { name: '蟠桃仙露', icon: '🍯', type: 'food', hp: 6500, price: 3200, desc: '恢复6500点气血。' },
   xianniang: { name: '天香仙酿', icon: '🍷', type: 'food', mp: 1200, price: 1300, desc: '恢复1200点魔法。' },
   jiuzhuan: { name: '九转还魂丹', icon: '💫', type: 'revive', revive: 1, price: 3000, desc: '战斗中复活一名倒地单位并恢复全部气血。' },
+  // 装备宝箱：使用后当场开出一件装备（minR 为保底品质，bias 越高越容易出高品质）
+  baoxiang: { name: '神秘宝箱', icon: '🎁', type: 'box', minR: 1, bias: 0.3, price: 0, desc: '打开后获得一件与你等级相当的装备，精良以上，有几率开出传说、神器。' },
+  shenbing: { name: '神兵宝匣', icon: '🧰', type: 'box', minR: 3, bias: 0.5, price: 0, desc: '打开后获得一件史诗以上的装备，必带特效。' },
+  tiangong: { name: '天工宝匣', icon: '👑', type: 'box', minR: 4, bias: 0.8, price: 0, desc: '上古天工所铸，打开后必得一件传说或神器装备。' },
+  lingxi: { name: '灵犀玉', icon: '🔮', type: 'mat', price: 0, desc: '装备洗练的材料：重新随机附加属性、特技与特效，可以选择保留新旧哪一份。' },
   // 养成材料（多由仙玉、活动获得）
   qianghua: { name: '强化石', icon: '💎', type: 'mat', price: 0, desc: '装备强化的材料。在人物界面「装备强化」中使用。' },
   baohu: { name: '强化保护符', icon: '🛡️', type: 'mat', price: 0, desc: '强化+7以上失败时，保护装备不掉级。' },

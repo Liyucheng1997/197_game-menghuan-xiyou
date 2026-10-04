@@ -9,6 +9,8 @@ export const isAlive = u => u.hp > 0 && !u.gone;
 export const has = (u, t) => u.traits.includes(t);
 // 普通/高级技能取较高的一档
 const tier = (u, t, lo, hi) => (has(u, 'gj_' + t) ? hi : has(u, t) ? lo : 0);
+// 装备特效数值（只有人物带装备特效）
+export const fxv = (u, k) => u.efx?.[k] || 0;
 export const enemiesOf = (B, u) => B.units.filter(x => x.side !== u.side && isAlive(x));
 export const alliesOf = (B, u) => B.units.filter(x => x.side === u.side && isAlive(x));
 export const deadAlliesOf = (B, u) => B.units.filter(x => x.side === u.side && !x.gone && x.hp <= 0);
@@ -35,6 +37,7 @@ export function canUse(u, id) {
   const lv = skillLv(u, id);
   const s = SKILLS[id];
   if (!lv || !s) return { ok: false, why: '未习得' };
+  if (s.uses && (u.used?.[id] || 0) >= s.uses) return { ok: false, why: '次数已用完' };
   if (u.mp < skillMp(id, lv)) return { ok: false, why: '魔法不足' };
   if (s.hpReq && u.hp < u.maxHp * s.hpReq) return { ok: false, why: '气血不足' + Math.round(s.hpReq * 100) + '%' };
   return { ok: true };
@@ -54,13 +57,13 @@ function fixEnemyTarget(B, u, t, rng) {
 }
 
 // ---------- 伤害 ----------
-export function physDamage(a, d, mult, rng, critBonus = 0) {
-  const atk = eff(a, 'atk'), def = eff(d, 'def');
+export function physDamage(a, d, mult, rng, critBonus = 0, pierce = 0) {
+  const atk = eff(a, 'atk'), def = eff(d, 'def') * (1 - Math.min(0.9, pierce + fxv(a, 'pojia')));
   let dmg = (atk - def * 0.75) * mult;
   dmg = Math.max(dmg, atk * mult * 0.1);
   dmg *= 0.92 + rng() * 0.16;
   let crit = false;
-  if (rng() < 0.03 + tier(a, 'bisha', 0.2, 0.3) + (a.critUp || 0) + critBonus) { dmg *= 1.6; crit = true; }
+  if (rng() < 0.03 + tier(a, 'bisha', 0.2, 0.3) + (a.critUp || 0) + fxv(a, 'baoji') + critBonus) { dmg *= 1.6 + fxv(a, 'kuangbao'); crit = true; }
   if (d.status.defend) dmg *= 0.5;
   if (d.ghost && has(a, 'qugui')) dmg *= 1.3;
   return { dmg: Math.max(1, Math.round(dmg)), crit };
@@ -76,6 +79,7 @@ export function magicDamage(a, d, s, lv, rng) {
   if (d.ghost && s.vsGhost) dmg *= s.vsGhost;
   if (d.status.defend) dmg *= 0.75;
   if (d.resist) dmg *= 1 - d.resist;
+  dmg *= 1 + fxv(a, 'fachuan');
   return Math.max(1, Math.round(dmg));
 }
 function healAmount(a, s, lv) {
@@ -87,7 +91,7 @@ function clearStatus(u) {
 }
 function onDeath(B, d, ev, info, rng) {
   clearStatus(d);
-  const sy = tier(d, 'shenyou', 0.25, 0.45);
+  const sy = Math.max(tier(d, 'shenyou', 0.25, 0.45), fxv(d, 'shenyou'));
   if (sy && rng() < sy) {
     d.hp = d.maxHp;
     ev.push({ t: 'revive', u: d, hp: d.hp, text: '神佑复生' });
@@ -96,6 +100,7 @@ function onDeath(B, d, ev, info, rng) {
   if (has(d, 'guihun') && !d.status.revivedOnce && !info.noRevive) d.status.ghostTimer = 3;
 }
 function damage(B, d, dmg, ev, info, rng, list) {
+  if (fxv(d, 'huti')) dmg = Math.max(1, Math.round(dmg * (1 - fxv(d, 'huti'))));
   d.hp = Math.max(0, d.hp - dmg);
   const e = { u: d, dmg, crit: !!info.crit, hp: d.hp, dead: d.hp <= 0 };
   if (list) list.push(e); else ev.push({ t: 'hit', ...e });
@@ -114,11 +119,16 @@ function heal(u, amt) {
   return u.hp - before;
 }
 
-function meleeHit(B, a, d, mult, rng, ev, critBonus = 0, allowCounter = true) {
+function meleeHit(B, a, d, mult, rng, ev, critBonus = 0, allowCounter = true, pierce = 0) {
   ev.push({ t: 'swing', u: a, tgt: d });
-  const r = physDamage(a, d, mult, rng, critBonus);
+  const r = physDamage(a, d, mult, rng, critBonus, pierce);
   damage(B, d, r.dmg, ev, { crit: r.crit, noRevive: d.ghost && has(a, 'qugui') }, rng);
-  const xx = tier(a, 'xixue', 0.25, 0.4);
+  // 反震：把一部分伤害弹回给攻击者
+  if (allowCounter && isAlive(d) && isAlive(a) && fxv(d, 'fanzhen') && rng() < fxv(d, 'fanzhen')) {
+    ev.push({ t: 'status', u: d, text: '反震', color: '#ffb040' });
+    damage(B, a, Math.max(1, Math.round(r.dmg * 0.3)), ev, {}, rng);
+  }
+  const xx = tier(a, 'xixue', 0.25, 0.4) + fxv(a, 'xixue');
   if (xx && isAlive(a)) {
     const h = heal(a, Math.round(r.dmg * xx));
     if (h > 0) ev.push({ t: 'heal', u: a, amt: h, hp: a.hp });
@@ -169,7 +179,8 @@ function doAttack(B, u, action, rng, ev) {
   if (!tgt) return ev;
   ev.push({ t: 'approach', u, tgt });
   meleeHit(B, u, tgt, 1, rng, ev);
-  if (isAlive(u) && isAlive(tgt) && tier(u, 'lianji', 0.35, 0.5) && rng() < tier(u, 'lianji', 0.35, 0.5)) {
+  const lj = tier(u, 'lianji', 0.35, 0.5) + fxv(u, 'lianji');
+  if (isAlive(u) && isAlive(tgt) && lj && rng() < lj) {
     ev.push({ t: 'status', u, text: '连击', color: '#ffe060' });
     meleeHit(B, u, tgt, 0.75, rng, ev);
   }
@@ -183,11 +194,12 @@ function doSkill(B, u, action, rng, ev) {
   const chk = canUse(u, id);
   if (!chk.ok) {
     ev.push({ t: 'status', u, text: chk.why, color: '#ff8080' });
-    if (chk.why === '魔法不足' || chk.why.startsWith('气血')) return doAttack(B, u, action, rng, ev);
+    if (chk.why === '魔法不足' || chk.why === '次数已用完' || chk.why.startsWith('气血')) return doAttack(B, u, action, rng, ev);
     return ev;
   }
   const lv = skillLv(u, id);
   u.mp -= skillMp(id, lv);
+  if (s.uses) { u.used ??= {}; u.used[id] = (u.used[id] || 0) + 1; }
   ev.push({ t: 'shout', u, text: s.name, mp: u.mp });
   const n = s.count ? s.count(lv) : 1;
   switch (s.kind) {
@@ -198,7 +210,8 @@ function doSkill(B, u, action, rng, ev) {
           if (!isAlive(u)) break;
           if (!isAlive(t)) continue;
           ev.push({ t: 'approach', u, tgt: t, fast: true, fx: s.fx });
-          meleeHit(B, u, t, s.mult, rng, ev);
+          if (s.tj) ev.push({ t: 'fx', u, fx: s.fx, tgts: [t], small: true });
+          meleeHit(B, u, t, s.mult, rng, ev, 0, true, s.pierce || 0);
         }
       } else {
         let t = fixEnemyTarget(B, u, action.target, rng);
@@ -208,7 +221,7 @@ function doSkill(B, u, action, rng, ev) {
           if (!isAlive(u)) break;
           if (!isAlive(t)) { t = fixEnemyTarget(B, u, null, rng); if (!t) break; ev.push({ t: 'approach', u, tgt: t, fast: true }); }
           ev.push({ t: 'fx', u, fx: s.fx, tgts: [t], small: true });
-          meleeHit(B, u, t, s.mult, rng, ev);
+          meleeHit(B, u, t, s.mult, rng, ev, 0, true, s.pierce || 0);
         }
       }
       ev.push({ t: 'back', u });
@@ -230,7 +243,7 @@ function doSkill(B, u, action, rng, ev) {
           dmg = Math.min(Math.round(t.hp * s.pct * (t.boss ? 0.5 : 1)), lv * 25 + 150);
         } else {
           dmg = magicDamage(u, t, s, lv, rng);
-          if (has(u, 'fs_baoji') && rng() < 0.15) { dmg = Math.round(dmg * 1.5); crit = true; }
+          if (rng() < (has(u, 'fs_baoji') ? 0.15 : 0) + fxv(u, 'fabao')) { dmg = Math.round(dmg * 1.5); crit = true; }
         }
         if (rep) dmg = Math.round(dmg * 0.7);
         if (t.resist && s.kind === 'true') dmg = Math.round(dmg * (1 - t.resist));
@@ -243,7 +256,7 @@ function doSkill(B, u, action, rng, ev) {
       ev.push(...after);
       // 法术连击：再施放一次（七成威力）
       tg = tg.filter(isAlive);
-      if (rep || s.kind !== 'magic' || !has(u, 'fs_lianji') || !isAlive(u) || rng() >= 0.25) break;
+      if (rep || s.kind !== 'magic' || !isAlive(u) || rng() >= (has(u, 'fs_lianji') ? 0.25 : 0) + fxv(u, 'falian')) break;
       ev.push({ t: 'status', u, text: '法术连击', color: '#ffe060' });
       }
       break;
@@ -259,7 +272,8 @@ function doSkill(B, u, action, rng, ev) {
       const amt = healAmount(u, s, lv);
       const list = [];
       for (const t of tg) {
-        if (s.kind === 'heal') list.push({ u: t, heal: heal(t, amt), hp: t.hp });
+        if (s.cleanse) { t.status.poison = null; t.status.seal = 0; }
+        if (s.kind === 'heal') list.push({ u: t, heal: heal(t, amt + (s.pctHp ? Math.round(t.maxHp * s.pctHp) : 0)), hp: t.hp });
         else { t.status.regen = { amt, turns: s.turns }; list.push({ u: t, heal: 0, hp: t.hp, text: s.name }); }
       }
       ev.push({ t: 'spell', u, fx: s.fx, list, heal: true });
@@ -269,9 +283,9 @@ function doSkill(B, u, action, rng, ev) {
       const dead = deadAlliesOf(B, u);
       const t = action.target && dead.includes(action.target) ? action.target : dead[0];
       if (!t) { ev.push({ t: 'status', u, text: '无需复活', color: '#bbb' }); break; }
-      t.hp = Math.round(t.maxHp * s.pct);
-      t.status.ghostTimer = 0;
-      ev.push({ t: 'spell', u, fx: s.fx, list: [{ u: t, heal: t.hp, hp: t.hp, revive: true }], heal: true });
+      const tg = s.all ? dead : [t];
+      for (const x of tg) { x.hp = Math.round(x.maxHp * s.pct); x.status.ghostTimer = 0; }
+      ev.push({ t: 'spell', u, fx: s.fx, list: tg.map(x => ({ u: x, heal: x.hp, hp: x.hp, revive: true })), heal: true });
       break;
     }
     case 'seal': {
@@ -298,7 +312,7 @@ function doSkill(B, u, action, rng, ev) {
       const t = fixEnemyTarget(B, u, action.target, rng);
       if (!t) break;
       for (const stat of s.stat) t.status.buffs[id + '_' + stat] = { stat, pct: -s.pct, turns: s.turns };
-      ev.push({ t: 'spell', u, fx: s.fx, list: [{ u: t, dmg: 0, hp: t.hp, text: '破防', color: '#c080ff' }] });
+      ev.push({ t: 'spell', u, fx: s.fx, list: [{ u: t, dmg: 0, hp: t.hp, text: s.tj ? s.name : '破防', color: '#c080ff' }] });
       break;
     }
     case 'charge': {
@@ -380,6 +394,16 @@ export function aiAction(B, u, rng = Math.random) {
   const kinds = k => ok.filter(id => SKILLS[id].kind === k);
   const rndFoe = () => (rng() < 0.35 ? lowest(foes) : foes[Math.floor(rng() * foes.length)]);
   const role = u.ai || 'monster';
+  // 装备特技：危急时优先救场
+  const tjs = ok.filter(id => SKILLS[id].tj);
+  if (tjs.length) {
+    const dead = deadAlliesOf(B, u).filter(x => x.kind !== 'pet');
+    const rv = tjs.find(id => SKILLS[id].kind === 'revive');
+    if (dead.length && rv) return { type: 'skill', skill: rv, target: dead[0] };
+    const hurt = friends.filter(x => x.hp < x.maxHp * 0.45);
+    const hl = tjs.find(id => SKILLS[id].kind === 'heal');
+    if (hurt.length && hl) return { type: 'skill', skill: hl, target: lowest(hurt) };
+  }
 
   if (role === 'heal') {
     const dead = deadAlliesOf(B, u).filter(x => x.kind !== 'pet');
@@ -461,6 +485,8 @@ export function endRound(B, rng = Math.random) {
     }
     if (has(u, 'zaisheng') || has(u, 'gj_zaisheng')) { const h = heal(u, Math.round(has(u, 'gj_zaisheng') ? u.level * 4 + 30 : u.level * 1.5 + 10)); if (h > 0) ev.push({ t: 'heal', u, amt: h, hp: u.hp }); }
     if (has(u, 'mingsi') || has(u, 'gj_mingsi')) u.mp = Math.min(u.maxMp, u.mp + Math.round(has(u, 'gj_mingsi') ? u.level * 1.2 + 15 : u.level / 2 + 5));
+    if (fxv(u, 'huichun')) { const h = heal(u, Math.round(u.maxHp * fxv(u, 'huichun'))); if (h > 0) ev.push({ t: 'heal', u, amt: h, hp: u.hp }); }
+    if (fxv(u, 'mingxiang')) u.mp = Math.min(u.maxMp, u.mp + Math.round(u.maxMp * fxv(u, 'mingxiang')));
     if (st.seal > 0) st.seal--;
     if (st.rest > 0) st.rest--;
     st.defend = false;

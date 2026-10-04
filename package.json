@@ -1,11 +1,11 @@
 {
   "name": "menghuan-xiyou-q",
-  "version": "2.3.0",
+  "version": "2.4.0",
   "private": true,
   "description": "梦幻西游 Q版 · 单机网页重制",
   "scripts": {
     "start": "node server.js",
-    "test": "node --test tests/game.test.mjs tests/endgame.test.mjs tests/server.test.cjs",
+    "test": "node --test tests/game.test.mjs tests/endgame.test.mjs tests/loot.test.mjs tests/server.test.cjs",
     "test:e2e": "node tests/e2e-mainquest.cjs",
     "balance": "node tests/balance.mjs && node tests/balance-high.mjs",
     "deploy": "bash deploy/deploy.sh"

@@ -206,6 +206,7 @@ function onStep() {
   if (S.incense > 0) { S.incense--; if (S.incense === 0) toast('摄妖香的效果消失了'); }
   W.stepCount++;
   if (Game.checkEncounter(W.map, W.stepCount)) { W.path = []; W.stepCount = 0; return true; }
+  if (Game.checkQiyu(W.map)) { W.path = []; W.nav = null; return true; }
   return false;
 }
 

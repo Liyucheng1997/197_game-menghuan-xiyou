@@ -1,8 +1,9 @@
 // 界面面板：HUD、人物、道具、召唤兽、技能、任务、队伍、地图、商店、系统
-import { ROLES, RACES, SCHOOLS, SKILLS, ITEMS, MONSTERS, PARTNERS, ATTRS, SLOTS, STAT_NAMES, RARITY, WEAPON_TYPE_NAMES, PET_MAX, PARTY_MAX, BAG_SIZE, expNeed, skillCost, MAX_LEVEL } from './data.js';
+import { ROLES, RACES, SCHOOLS, SKILLS, ITEMS, MONSTERS, PARTNERS, ATTRS, SLOTS, STAT_NAMES, RARITY, EQ_FX, WEAPON_TYPE_NAMES, PET_MAX, PARTY_MAX, BAG_SIZE, expNeed, skillCost, MAX_LEVEL } from './data.js';
 import { G, save, stats, autoAssign, equipFromBag, unequip, makeEquip, addItem, addEquip, activePet, recruit, toggleParty, rarityColor, canEquip, wipe, countItem, levelCap, partnerFull } from './state.js';
-import { petStats, partnerStats, eqStats } from './stats.js';
-import { forgePanel, eqName, eqGlow, eqStatText, cultHtml, bindCult, starUp, starCost, STAR_MAX } from './growth.js';
+import { petStats, partnerStats, eqStats, eqFxSum, eqTj } from './stats.js';
+import { forgePanel, eqName, eqGlow, eqStatText, eqTags, eqSpecialHtml, cultHtml, bindCult, starUp, starCost, STAR_MAX } from './growth.js';
+import * as Loot from './loot.js';
 import * as Mall from './mall.js';
 import * as Act from './activity.js';
 export { forgePanel };
@@ -117,12 +118,14 @@ export function closeAll() { closePanel(); }
 export function charPanel() {
   const S = G.S, st = stats(), role = ROLES[S.role];
   const b = panel('人物属性', '', { id: 'char', width: 640 });
-  const eqHtml = SLOTS.map(([k, n]) => { const e = S.equip[k]; return `<div class="eq-slot ${e ? 'has' : ''}" data-k="${k}" title="点击卸下"><span class="eq-n">${n}</span>${e ? `<b class="${eqGlow(e)}" style="color:${rarityColor(e.rarity)}">${eqName(e)}</b><small>${eqStatText(e)}</small>` : '<small>空</small>'}</div>`; }).join('');
+  const eqHtml = SLOTS.map(([k, n]) => { const e = S.equip[k]; return `<div class="eq-slot ${e ? 'has' : ''}" data-k="${k}" title="点击卸下"><span class="eq-n">${n}</span>${e ? `<b class="${eqGlow(e)}" style="color:${rarityColor(e.rarity)}">${eqName(e)}</b><small>${eqStatText(e)}</small>${eqTags(e) ? `<small class="eq-tags">${eqTags(e)}</small>` : ''}` : '<small>空</small>'}</div>`; }).join('');
+  const fxs = eqFxSum(S.equip), tjs = eqTj(S.equip);
+  const fxHtml = Object.keys(fxs).length || tjs.length ? `<div class="fx-sum">${tjs.map(id => `<span class="tj" title="${SKILLS[id].desc}">✦${SKILLS[id].name}</span>`).join('')}${Object.entries(fxs).map(([f, v]) => `<span title="${EQ_FX[f].desc}">${EQ_FX[f].name} ${Math.round(v * 100)}%</span>`).join('')}</div>` : '';
   b.innerHTML = `<div class="char">
     <div class="char-l"><div class="char-face"></div>
       <div class="char-id"><b>${esc(S.name)}</b><div>${role.name} · ${RACES[role.race].name}</div><div>${S.school ? SCHOOLS[S.school].name : '无门派'} · 境界「${Act.realmName()}」</div><div class="title-tag">${esc(S.title)}</div></div>
       <div class="eqs">${eqHtml}</div>
-      <div class="row-btns"><button class="btn small primary" id="c-forge">装备强化</button><button class="btn small" id="c-cult">修炼</button></div></div>
+      ${fxHtml}<div class="row-btns"><button class="btn small primary" id="c-forge">强化/洗练</button><button class="btn small" id="c-craft">打造</button><button class="btn small" id="c-cult">修炼</button></div></div>
     <div class="char-r">
       <div class="kv"><span>等级</span><b>${S.level}<small class="muted">/${levelCap()}</small></b><span>银两</span><b>${fmt(S.gold)}</b><span>仙玉</span><b class="jd">${fmt(S.jade)}</b><span>VIP</span><b>${Mall.vipLevel()}</b></div>
       ${bar(S.exp, expNeed(S.level), 'exp')}
@@ -141,6 +144,7 @@ export function charPanel() {
   b.querySelector('#auto-pts').onclick = () => { autoAssign(S); charPanel(); refreshHud(); };
   b.querySelector('#auto-lv').onchange = e => { S.flags.autoPoints = e.target.checked; };
   b.querySelector('#c-forge').onclick = () => forgePanel();
+  b.querySelector('#c-craft').onclick = () => Loot.craftPanel();
   b.querySelector('#c-cult').onclick = () => skillPanel('cult');
   b.querySelectorAll('.eq-slot.has').forEach(x => x.onclick = () => { const r = unequip(x.dataset.k); if (r) toast(r); else { Audio2.sfx('click'); charPanel(); refreshHud(); } });
 }
@@ -153,21 +157,31 @@ export function bagPanel(sel = -1) {
   for (let i = 0; i < BAG_SIZE; i++) {
     const e = S.inv[i];
     if (!e) { cells.push('<div class="cell empty"></div>'); continue; }
-    if (e.eq) cells.push(`<div class="cell ${i === sel ? 'sel' : ''}" data-i="${i}" style="border-color:${rarityColor(e.eq.rarity)}"><span class="ic">${slotIcon(e.eq.slot)}</span><span class="nm" style="color:${rarityColor(e.eq.rarity)}">${e.eq.name}</span>${e.eq.plus ? `<span class="ct">+${e.eq.plus}</span>` : ''}</div>`);
+    if (e.eq?.unid) cells.push(`<div class="cell unid ${i === sel ? 'sel' : ''}" data-i="${i}"><span class="ic">${slotIcon(e.eq.slot)}</span><span class="nm">未鉴定</span><span class="ct">?</span></div>`);
+    else if (e.eq) cells.push(`<div class="cell r${e.eq.rarity} ${i === sel ? 'sel' : ''}" data-i="${i}" style="border-color:${rarityColor(e.eq.rarity)}"><span class="ic">${slotIcon(e.eq.slot)}</span><span class="nm" style="color:${rarityColor(e.eq.rarity)}">${e.eq.name}</span>${e.eq.plus ? `<span class="ct">+${e.eq.plus}</span>` : ''}${e.eq.tj ? '<span class="tjm">✦</span>' : ''}</div>`);
+    else if (ITEMS[e.id].type === 'box') cells.push(`<div class="cell box ${i === sel ? 'sel' : ''}" data-i="${i}"><span class="ic">${ITEMS[e.id].icon}</span><span class="nm">${ITEMS[e.id].name}</span>${e.n > 1 ? `<span class="ct">${e.n}</span>` : ''}</div>`);
     else cells.push(`<div class="cell ${i === sel ? 'sel' : ''}" data-i="${i}"><span class="ic">${ITEMS[e.id].icon}</span><span class="nm">${ITEMS[e.id].name}</span>${e.n > 1 ? `<span class="ct">${e.n}</span>` : ''}</div>`);
   }
-  b.innerHTML = `<div class="bag"><div class="grid">${cells.join('')}</div><div class="detail" id="bag-detail"><div class="muted">点击物品查看详情</div></div></div><div class="gold">银两：<b>${fmt(S.gold)}</b>　仙玉：<b class="jd">${fmt(S.jade)}</b>　<span class="muted">${S.inv.length}/${BAG_SIZE}</span></div>`;
+  const nUnid = Loot.unidList().length;
+  b.innerHTML = `<div class="bag"><div class="grid">${cells.join('')}</div><div class="detail" id="bag-detail"><div class="muted">点击物品查看详情</div></div></div><div class="gold">银两：<b>${fmt(S.gold)}</b>　仙玉：<b class="jd">${fmt(S.jade)}</b>　<span class="muted">${S.inv.length}/${BAG_SIZE}</span>
+    <span class="bag-ops"><button class="btn small ${nUnid ? 'primary' : ''}" id="b-idall" ${nUnid ? '' : 'disabled'}>一键鉴定${nUnid ? `（${nUnid}）` : ''}</button><button class="btn small" id="b-junk">出售稀有及以下</button></span></div>`;
   b.querySelectorAll('.cell[data-i]').forEach(c => c.onclick = () => bagPanel(+c.dataset.i));
+  b.querySelector('#b-idall').onclick = () => Loot.identify(Loot.unidList(), () => { if (UI.panelOpen === 'bag') bagPanel(); });
+  b.querySelector('#b-junk').onclick = () => Loot.sellJunk(2, () => { if (UI.panelOpen === 'bag') bagPanel(); });
   if (sel >= 0 && S.inv[sel]) showItem(b.querySelector('#bag-detail'), sel);
 }
 const slotIcon = s => ({ weapon: '⚔️', helm: '🎩', neck: '📿', armor: '👘', belt: '🎗️', boots: '👢' }[s]);
 function equipDesc(eq) {
-  return `<div class="it-name ${eqGlow(eq)}" style="color:${rarityColor(eq.rarity)}">${eqName(eq)}</div><div class="muted">${RARITY[eq.rarity].name} · ${SLOTS.find(s => s[0] === eq.slot)[1]}${eq.wtype ? '（' + WEAPON_TYPE_NAMES[eq.wtype] + '）' : ''} · 需要等级${eq.req}${eq.plus ? ` · 强化+${eq.plus}` : ''}</div>
-    <div class="it-stats">${Object.entries(eqStats(eq)).map(([k, v]) => `<div>${STAT_NAMES[k]} <b>+${v}</b></div>`).join('')}</div>`;
+  if (eq.unid) return `<div class="it-name">❓ ${eqName(eq)}</div><div class="muted">${SLOTS.find(s => s[0] === eq.slot)[1]} · 品质、属性、特技与特效都要鉴定后才知道</div>`;
+  return `<div class="it-name ${eqGlow(eq)}" style="color:${eq.rarity ? rarityColor(eq.rarity) : '#5a3a1a'}">${eqName(eq)}</div><div class="muted">${RARITY[eq.rarity].name} · ${SLOTS.find(s => s[0] === eq.slot)[1]}${eq.wtype ? '（' + WEAPON_TYPE_NAMES[eq.wtype] + '）' : ''} · 需要等级${eq.req}${eq.plus ? ` · 强化+${eq.plus}` : ''}</div>
+    <div class="it-stats">${Object.entries(eqStats(eq)).map(([k, v]) => `<div>${STAT_NAMES[k]} <b>+${v}</b></div>`).join('')}</div>${eqSpecialHtml(eq)}`;
 }
 function showItem(d, i) {
   const S = G.S, e = S.inv[i];
-  if (e.eq) {
+  if (e.eq?.unid) {
+    d.innerHTML = equipDesc(e.eq) + `<div class="row-btns"><button class="btn primary" id="b-id">鉴定</button><button class="btn" id="b-sell">出售 ${Math.floor(e.eq.price * 0.3)}两</button></div>`;
+    d.querySelector('#b-id').onclick = () => Loot.identify([e.eq], () => { if (UI.panelOpen === 'bag') bagPanel(S.inv.indexOf(e)); });
+  } else if (e.eq) {
     const why = canEquip(e.eq);
     const cur = S.equip[e.eq.slot];
     d.innerHTML = equipDesc(e.eq) + (cur ? `<div class="cmp">当前：${equipDesc(cur)}</div>` : '') + `<div class="row-btns"><button class="btn primary" id="b-eq" ${why ? 'disabled' : ''}>${why || '装备'}</button><button class="btn" id="b-forge">强化</button><button class="btn" id="b-sell">出售 ${Math.floor(e.eq.price * 0.3)}两</button></div>`;

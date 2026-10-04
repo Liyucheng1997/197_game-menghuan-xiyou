@@ -1,24 +1,33 @@
 // 养成：装备强化、修炼、伙伴升星
-import { SLOTS, STAT_NAMES, RARITY, PARTNERS } from './data.js';
+import { SLOTS, STAT_NAMES, RARITY, PARTNERS, SKILLS, EQ_FX } from './data.js';
 import { G, save, stats, countItem, removeItem } from './state.js';
 import { eqStats, CULT, cultCap } from './stats.js';
 import { panel, toast, log, banner, UI } from './ui.js';
 import * as P from './panels.js';
 import { fmt, esc } from './util.js';
 import { Audio2 } from './audio.js';
+import * as Loot from './loot.js';
 
 // ---------------- 装备强化 ----------------
 export const MAX_PLUS = 15;
 const RATE = [1, 1, 1, 0.9, 0.8, 0.7, 0.6, 0.5, 0.42, 0.35, 0.3, 0.25, 0.2, 0.15, 0.1];
 export const forgeCost = e => ({ stones: 1 + Math.floor((e.plus || 0) / 2), gold: (e.tier + 1) * 600 * ((e.plus || 0) + 1) });
-export const eqName = e => e.name + (e.plus ? ` +${e.plus}` : '');
-export const eqGlow = e => ((e.plus || 0) >= 12 ? 'glow3' : (e.plus || 0) >= 9 ? 'glow2' : (e.plus || 0) >= 6 ? 'glow1' : '');
-export const eqStatText = e => Object.entries(eqStats(e)).map(([s, v]) => STAT_NAMES[s] + '+' + v).join(' ');
+export const eqName = e => (e.unid ? `未鉴定的${e.tier * 10}级${SLOTS.find(x => x[0] === e.slot)[1]}` : e.name + (e.plus ? ` +${e.plus}` : ''));
+// 名字发光：强化等级越高越亮；传说、神器另有专属光效
+export const eqGlow = e => [(e.plus || 0) >= 12 ? 'glow3' : (e.plus || 0) >= 9 ? 'glow2' : (e.plus || 0) >= 6 ? 'glow1' : '', !e.unid && e.rarity >= 4 ? 'rg' + e.rarity : ''].join(' ').trim();
+export const eqStatText = e => (e.unid ? '？？？' : Object.entries(eqStats(e)).map(([s, v]) => STAT_NAMES[s] + '+' + v).join(' '));
+// 特技与特效的简短标签，如「✦破血狂攻 · 神佑 · 暴击」
+export const eqTags = e => (e.unid ? '' : [e.tj && SKILLS[e.tj] ? '✦' + SKILLS[e.tj].name : '', ...(e.fx || []).map(f => EQ_FX[f]?.name)].filter(Boolean).join(' · '));
+export function eqSpecialHtml(e) {
+  if (e.unid) return '';
+  return (e.tj && SKILLS[e.tj] ? `<div class="eq-tj">✦ 特技「${SKILLS[e.tj].name}」<small>${SKILLS[e.tj].desc.replace('特技：', '')}（每场${SKILLS[e.tj].uses}次）</small></div>` : '') +
+    (e.fx || []).map(f => `<div class="eq-fx">◆ 特效「${EQ_FX[f].name}」<small>${EQ_FX[f].desc}</small></div>`).join('');
+}
 
 function allEquips() {
   const S = G.S, out = [];
   for (const [k, n] of SLOTS) if (S.equip[k]) out.push({ key: 'e' + k, e: S.equip[k], where: '已装备·' + n });
-  S.inv.forEach(x => { if (x.eq) out.push({ key: 'b' + x.eq.uid, e: x.eq, where: '背包' }); });
+  S.inv.forEach(x => { if (x.eq && !x.eq.unid) out.push({ key: 'b' + x.eq.uid, e: x.eq, where: '背包' }); });
   return out;
 }
 let forgeSel = null, protect = true;
@@ -36,16 +45,18 @@ export function forgePanel(sel) {
   const next = { ...e, plus: plus + 1 };
   b.innerHTML = `<div class="forge"><div class="flist">${list.map(x => `<div class="fitem ${x.key === forgeSel ? 'sel' : ''}" data-k="${x.key}"><b class="${eqGlow(x.e)}" style="color:${RARITY[x.e.rarity].color}">${esc(eqName(x.e))}</b><small>${x.where} · ${x.e.req}级</small></div>`).join('')}</div>
     <div class="fdetail"><div class="it-name ${eqGlow(e)}" style="color:${RARITY[e.rarity].color}">${esc(eqName(e))}</div>
-      <div class="muted">${RARITY[e.rarity].name} · 强化等级 ${plus}/${MAX_PLUS} · 每级全属性 +7%</div>
+      <div class="muted">${RARITY[e.rarity].name} · 强化等级 ${plus}/${MAX_PLUS} · 每级全属性 +7%</div>${eqSpecialHtml(e)}
       <div class="fcmp"><div><div class="muted">当前</div>${Object.entries(eqStats(e)).map(([s, v]) => `<div>${STAT_NAMES[s]} <b>+${v}</b></div>`).join('')}</div>
       ${plus < MAX_PLUS ? `<div class="arrow">➜</div><div><div class="muted">+${plus + 1}</div>${Object.entries(eqStats(next)).map(([s, v]) => `<div>${STAT_NAMES[s]} <b class="up">+${v}</b></div>`).join('')}</div>` : ''}</div>
       ${plus < MAX_PLUS ? `<div class="fcost">成功率 <b class="${rate < 0.5 ? 'warn' : ''}">${Math.round(rate * 100)}%</b>　消耗 💎强化石 <b>${c.stones}</b>（有 ${countItem('qianghua')}）　银两 <b>${fmt(c.gold)}</b></div>
       ${risky ? `<div class="muted">+7 以上强化失败会<b>掉一级</b>。<label class="chk inline"><input type="checkbox" id="f-pro" ${protect ? 'checked' : ''}> 使用强化保护符（有 ${countItem('baohu')}）</label></div>` : '<div class="muted">+6 以内失败不会掉级。</div>'}
       <div class="row-btns"><button class="btn big primary" id="f-go">强化</button></div>` : '<div class="fmax">已强化到满级！</div>'}
-      <div class="muted">强化石可在藏宝阁购买，也能从镇妖塔、秘境、祈愿、签到中获得。</div></div></div>`;
+      <div class="muted">强化石可在藏宝阁购买，也能从镇妖塔、秘境、祈愿、签到中获得。</div>
+      ${e.rarity ? `<div class="xl-row">洗练：重新随机附加属性、特技、特效，可选择保留新旧哪一份。消耗 🔮灵犀玉 <b>1</b>（有 ${countItem('lingxi')}）　银两 <b>${fmt(Loot.xilianCost(e).gold)}</b> <button class="btn small" id="f-xl">洗练</button></div>` : ''}</div></div>`;
   b.querySelectorAll('.fitem').forEach(x => x.onclick = () => forgePanel(x.dataset.k));
   b.querySelector('#f-pro')?.addEventListener('change', ev => { protect = ev.target.checked; });
   b.querySelector('#f-go')?.addEventListener('click', () => doForge(e));
+  b.querySelector('#f-xl')?.addEventListener('click', () => Loot.xilian(e, () => { if (UI.panelOpen === 'forge') forgePanel(); }));
 }
 function doForge(e) {
   const S = G.S, plus = e.plus || 0;

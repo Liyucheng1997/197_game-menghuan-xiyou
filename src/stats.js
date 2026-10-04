@@ -1,5 +1,5 @@
 // 属性推导：角色、召唤兽、伙伴、怪物
-import { RACES, ROLES, SCHOOLS, SKILLS, EQUIP_BASE, MONSTERS, PARTNERS, tierForLevel } from './data.js';
+import { RACES, ROLES, SCHOOLS, SKILLS, EQUIP_BASE, MONSTERS, PARTNERS, EQ_FX, tierForLevel } from './data.js';
 
 export function derive(attr, level, equipSum = {}, passive = {}) {
   const s = {
@@ -24,7 +24,7 @@ export function equipSum(equip) {
   const sum = {};
   for (const k in equip) {
     const e = equip[k];
-    if (!e) continue;
+    if (!e || e.unid) continue;
     const st = eqStats(e);
     for (const x in st) sum[x] = (sum[x] || 0) + st[x];
   }
@@ -57,8 +57,27 @@ export function passiveBonus(school, skills) {
   return out;
 }
 
+// 已穿戴装备的特效汇总：{ 特效id: 叠加后的数值 }
+export function eqFxSum(equip) {
+  const out = {};
+  for (const k in equip || {}) {
+    const e = equip[k];
+    if (!e || e.unid) continue;
+    for (const f of e.fx || []) { const d = EQ_FX[f]; if (d?.v) out[f] = Math.min(d.cap ?? 9, (out[f] || 0) + d.v); }
+  }
+  return out;
+}
+// 已穿戴装备带来的特技（去重）
+export function eqTj(equip) {
+  return [...new Set(Object.values(equip || {}).filter(e => e && !e.unid && e.tj && SKILLS[e.tj]).map(e => e.tj))];
+}
+
 export function playerStats(S) {
-  return applyCult(derive(S.attr, S.level, equipSum(S.equip), passiveBonus(S.school, S.skills)), S.cult);
+  const st = applyCult(derive(S.attr, S.level, equipSum(S.equip), passiveBonus(S.school, S.skills)), S.cult);
+  const fx = eqFxSum(S.equip);
+  if (fx.qiangti) st.maxHp = Math.floor(st.maxHp * (1 + fx.qiangti));
+  if (fx.xunjie) st.spd = Math.floor(st.spd * (1 + fx.xunjie));
+  return st;
 }
 
 // 按加点方案自动生成某等级的属性（伙伴使用）

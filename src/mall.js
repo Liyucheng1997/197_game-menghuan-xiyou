@@ -38,8 +38,9 @@ function spend(n) {
 // [稀有度, 权重, 奖励, 数量]；金 2%、紫 13%、蓝 85%，60 抽必出金，十连必出紫
 const POOL = [
   [3, 0.5, 'shenshou'], [3, 0.8, 'gj_shoujue', 1], [3, 0.7, 'jade', 888],
-  [2, 3, 'shenshou_sp', 10], [2, 2, 'baohu', 2], [2, 2, 'jinke2', 1], [2, 2, 'xinwu', 3], [2, 2, 'shuangbei', 2], [2, 2, 'gj_baotu', 1],
-  [1, 18, 'qianghua', 3], [1, 12, 'shoujue', 1], [1, 14, 'shenshou_sp', 2], [1, 10, 'jinke', 1], [1, 9, 'xiulian', 2], [1, 8, 'jingyan', 1], [1, 8, 'xinwu', 1], [1, 6, 'wanyao', 2],
+  [3, 0.6, 'tiangong', 1],
+  [2, 3, 'shenshou_sp', 10], [2, 3, 'shenbing', 1], [2, 2, 'baohu', 2], [2, 2, 'jinke2', 1], [2, 2, 'xinwu', 3], [2, 2, 'shuangbei', 2], [2, 2, 'gj_baotu', 1],
+  [1, 10, 'baoxiang', 2], [1, 6, 'lingxi', 2], [1, 18, 'qianghua', 3], [1, 12, 'shoujue', 1], [1, 14, 'shenshou_sp', 2], [1, 10, 'jinke', 1], [1, 9, 'xiulian', 2], [1, 8, 'jingyan', 1], [1, 8, 'xinwu', 1], [1, 6, 'wanyao', 2],
 ];
 export const PITY = 60;
 function rollOne(minR = 1) {
@@ -95,7 +96,7 @@ function showPulls(res) {
 }
 
 // ---------------- 商城 ----------------
-const SHOP = [['qianghua', 20], ['baohu', 60], ['shoujue', 100], ['gj_shoujue', 800], ['jinke', 40], ['jinke2', 200], ['xiulian', 30], ['shuangbei', 80], ['xinwu', 120], ['jingyan', 150], ['gj_baotu', 150], ['jiuzhuan', 30], ['xianlu', 20], ['feixing', 5], ['sheyao', 5]];
+const SHOP = [['baoxiang', 40], ['shenbing', 280], ['tiangong', 1500], ['lingxi', 30], ['qianghua', 20], ['baohu', 60], ['shoujue', 100], ['gj_shoujue', 800], ['jinke', 40], ['jinke2', 200], ['xiulian', 30], ['shuangbei', 80], ['xinwu', 120], ['jingyan', 150], ['gj_baotu', 150], ['jiuzhuan', 30], ['xianlu', 20], ['feixing', 5], ['sheyao', 5]];
 function buy(id, price, n) {
   if (id !== 'gj_baotu' && bagFree() < 1 && !S_().inv.some(e => e.id === id && !e.data)) { toast('背包已满'); return; }
   if (!spend(price * n)) return;
@@ -150,7 +151,7 @@ function claimChargeGift(i) {
 }
 
 // ---------------- 福利：签到、等级礼包、成就 ----------------
-const SIGN = [{ jade: 50 }, { items: [['qianghua', 5]] }, { jade: 80 }, { items: [['shuangbei', 1]] }, { items: [['xiulian', 3]] }, { items: [['shoujue', 1]] }, { jade: 200, items: [['shenshou_sp', 10]] }];
+const SIGN = [{ jade: 50 }, { items: [['qianghua', 5]] }, { jade: 80 }, { items: [['shuangbei', 1]] }, { items: [['xiulian', 3]] }, { items: [['shoujue', 1]] }, { jade: 200, items: [['shenshou_sp', 10], ['shenbing', 1]] }];
 const signText = r => [r.jade && `仙玉×${r.jade}`, ...(r.items || []).map(([id, n]) => `${ITEMS[id].name}×${n}`)].filter(Boolean).join('、');
 const canSign = () => S_().mall.sign.last !== daily().date;
 function doSign() {
@@ -164,7 +165,7 @@ function doSign() {
   save(); mallPanel('welfare'); checkRedDot();
 }
 const LV_GIFTS = Array.from({ length: 15 }, (_, i) => (i + 1) * 10);
-const lvGift = lv => ({ jade: lv * 3, items: lv % 50 === 0 ? [['gj_shoujue', 1]] : lv % 30 === 0 ? [['shuangbei', 2]] : [['qianghua', lv / 10]] });
+const lvGift = lv => ({ jade: lv * 3, items: [lv % 50 === 0 ? ['gj_shoujue', 1] : lv % 30 === 0 ? ['shuangbei', 2] : ['qianghua', lv / 10], lv % 50 === 0 ? ['tiangong', 1] : ['shenbing', 1]] });
 function claimLv(lv) {
   const S = S_();
   if (S.level < lv || S.mall.lvGifts[lv]) return;
@@ -204,6 +205,10 @@ export const ACH = [
   ['boss30', '首领克星', '击败首领30次', S => S.stat.bosses, 30, 200],
   ['pulls100', '天命之子', '祈愿100次', S => S.stat.pulls, 100, 300],
   ['break4', '三界至尊', '完成全部四次渡劫', S => S.breaks, 4, 1000],
+  ['qiyu20', '奇遇连连', '触发20次奇遇', S => S.stat.qiyu || 0, 20, 200],
+  ['qiyu100', '天选之人', '触发100次奇遇', S => S.stat.qiyu || 0, 100, 600],
+  ['open100', '开箱达人', '鉴定、开启、打造共100件装备', S => S.stat.opened || 0, 100, 300],
+  ['shenqi1', '神兵在手', '开出一件神器装备', S => S.stat.shenqi || 0, 1, 500],
   ['story', '七大圣', '完成七大圣篇主线', S => (S.quests.main.step >= Game.MAIN.length ? 1 : 0), 1, 1000],
 ];
 function claimAch(id) {

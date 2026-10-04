@@ -10,6 +10,7 @@ import { dialog, toast, log, banner, confirmBox, panel, closePanel, UI } from '.
 import { navigate } from './world.js';
 import * as Game from './game.js';
 import * as Mall from './mall.js';
+import * as Loot from './loot.js';
 import * as P from './panels.js';
 import { pick, randi, shuffle, chance, fmt, esc, clamp, weighted } from './util.js';
 import { Audio2 } from './audio.js';
@@ -43,7 +44,7 @@ function giveItems(list) {
 function reward({ expF = 0, gold = 0, jade = 0, items = [] }) {
   const S = S_(), out = [];
   if (expF) out.push(`经验+${fmt(Game.grantExp(Math.floor(expNeed(S.level) * expF)).gained)}`);
-  if (gold) { gold = Math.floor(gold * (1 + Mall.vipPerk('gold'))); S.gold += gold; out.push(`银两+${fmt(gold)}`); }
+  if (gold) { gold = Math.floor(gold * 2 * Game.goldMul()); S.gold += gold; out.push(`银两+${fmt(gold)}`); }
   if (jade) { Mall.addJade(jade); out.push(`仙玉+${jade}`); }
   out.push(...giveItems(items));
   return out.join('，');
@@ -382,10 +383,10 @@ export function arenaFoes() {
 
 // ================= 天降异象 =================
 const XINGXIU = ['角木蛟', '亢金龙', '氐土貉', '房日兔', '心月狐', '尾火虎', '箕水豹', '斗木獬', '牛金牛', '女土蝠', '虚日鼠', '危月燕', '室火猪', '壁水貐', '奎木狼', '娄金狗', '胃土雉', '昴日鸡', '毕月乌', '觜火猴', '参水猿', '井木犴', '鬼金羊', '柳土獐', '星日马', '张月鹿', '翼火蛇', '轸水蚓'];
-const EVENT_GAP = 9 * 60 * 1000, EVENT_TTL = 15 * 60 * 1000;
+const EVENT_GAP = 5 * 60 * 1000, EVENT_TTL = 15 * 60 * 1000;
 export function tick(dt) {
   const S = S_();
-  if (S.level < 30) return;
+  if (S.level < 20) return;
   const ev = S.quests.event;
   if (ev) {
     ev.ttl -= dt;
@@ -426,7 +427,7 @@ async function talkEvent() {
   const L = S.level;
   if (ev.type === 'chest') {
     S.quests.event = null;
-    const got = [reward({ gold: L * randi(200, 500), jade: randi(20, 60) }), ...giveItems([weighted([[['qianghua', 5], 30], [['shoujue', 1], 20], [['shuangbei', 1], 15], [['xinwu', 2], 15], [['shenshou_sp', 8], 12], [['gj_shoujue', 1], 8]])])].join('，');
+    const got = [reward({ gold: L * randi(400, 1000), jade: randi(30, 80) }), ...giveItems([['baoxiang', 2], weighted([[['qianghua', 5], 30], [['shoujue', 1], 20], [['shuangbei', 1], 15], [['xinwu', 2], 15], [['shenshou_sp', 8], 12], [['gj_shoujue', 1], 8], [['shenbing', 1], 10]])])].join('，');
     Audio2.sfx('levelup'); banner('聚宝盆', got); log(`【天降异象】聚宝盆精灵留下了：${got}`, '#ffb040');
     P.refreshHud(); save();
     return;
@@ -444,7 +445,8 @@ async function talkEvent() {
         ? [weighted([[['shoujue', 1], 35], [['qianghua', 5], 30], [['shenshou_sp', 5], 20], [['gj_shoujue', 1], 10], [['gj_baotu', 1], 5]])]
         : [weighted([[['gj_shoujue', 1], 30], [['shenshou_sp', 15], 30], [['baohu', 2], 25], [['gj_baotu', 1], 15]])];
       const txt = reward({ expF: ev.type === 'star' ? 0.35 : 0.5, gold: L * (ev.type === 'star' ? 300 : 500), jade: ev.type === 'star' ? 40 : 80, items });
-      if (ev.type === 'yaowang') { const eq = makeEquip(pick(['weapon', 'armor', 'helm', 'neck', 'belt', 'boots']), tierForLevel(L), ROLES[S.role].weapon, 3, randi(1, 4)); if (addEquip(eq)) log(`【天降异象】妖王掉落史诗装备「${eq.name} +${eq.plus}」`, '#d68aff'); }
+      if (ev.type === 'yaowang' && addItem('shenbing', 1)) Game.R.afterBattle = () => Loot.openBox('shenbing');
+      if (ev.type === 'star') addItem('baoxiang', 1);
       log(`【天降异象】击败${ev.name}：${txt}`, '#ffb040');
       return `击败${esc(ev.name)}！${txt}`;
     },
@@ -479,8 +481,10 @@ export function digHighTreasure() {
   else if (r < 0.62) msg = '挖到了一箱仙玉：' + reward({ jade: randi(100, 300) });
   else if (r < 0.8) msg = '挖到了大量银两：' + reward({ gold: L * randi(600, 1200) });
   else {
-    const eq = makeEquip(pick(['weapon', 'armor', 'helm', 'neck', 'belt', 'boots']), tierForLevel(L), ROLES[S.role].weapon, 3, randi(2, 5));
-    msg = addEquip(eq) ? `挖到了史诗装备「${eq.name} +${eq.plus}」！` : '背包已满，宝物散落了……';
+    const eq = Loot.boxEquip('shenbing', L);
+    eq.plus = randi(2, 5);
+    if (!addEquip(eq)) msg = '背包已满，宝物散落了……';
+    else { Loot.reveal([eq], { title: '宝藏里埋着一件神兵……', icon: '⚱️' }); P.refreshHud(); save(); return; }
   }
   banner('高级宝图', msg.replace(/<\/?b>/g, ''));
   log('【高级宝图】' + msg, '#ffb060');
@@ -525,7 +529,9 @@ export function activityPanel() {
     ['秘境降妖', '#7ae0c8', `今日 ${d.mj}/${mijingMax()} · 五关闯关，挑选祝福`, { map: 'changan', npc: 'mijing' }, 40],
     ['三界答题', '#f0d080', `今日 ${d.quiz}/10 · 答对 ${d.quizRight}`, { map: 'changan', npc: 'fuzi' }, 20],
     ['华山论剑', rk[2], `今日 ${d.arena}/${arenaMax()} · ${rk[1]} ${S.arena.score}分`, { map: 'changan', npc: 'arena' }, 30],
-    ['天降异象', '#ffb040', ev ? `${ev.name}在${MAP_NAMES[ev.map]}，剩余${Math.ceil(ev.ttl / 60000)}分钟` : '30级后，游戏中每隔约9分钟随机出现星宿、宝箱精灵或妖王', ev && { map: ev.map, npc: 'event' }, 30],
+    ['天降异象', '#ffb040', ev ? `${ev.name}在${MAP_NAMES[ev.map]}，剩余${Math.ceil(ev.ttl / 60000)}分钟` : '20级后，游戏中每隔约5分钟随机出现星宿、宝箱精灵或妖王', ev && { map: ev.map, npc: 'event' }, 20],
+    ['野外奇遇', '#7af0ff', `已触发 ${S.stat.qiyu || 0} 次 · 在野外行走时随机遇到拾金、宝箱、神秘商人、神兵守护、财神显灵……`, null, 3],
+    ['装备打造', '#ffa53a', `已开出 ${S.stat.opened || 0} 件装备、${S.stat.shenqi || 0} 件神器 · 长安城兵器铺、服饰店、首饰店`, { map: 'changan', npc: 'ca_weapon' }, 1],
     ['渡劫突破', '#ff7ad8', `境界：${realmName()} · 当前等级上限 ${levelCap()}`, { map: 'changan', npc: 'taibai' }, 1],
   ];
   const b = panel('活动', '', { id: 'act', width: 640 });

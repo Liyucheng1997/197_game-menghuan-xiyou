@@ -1,9 +1,9 @@
 // 存档状态：角色、背包、装备、召唤兽、伙伴
-import { ROLES, RACES, SCHOOLS, SKILLS, MONSTERS, PARTNERS, EQUIP_BASE, EQUIP_NAMES, WEAPON_NAMES, RARITY,
+import { ROLES, RACES, SCHOOLS, SKILLS, MONSTERS, PARTNERS, EQUIP_BASE, EQUIP_NAMES, WEAPON_NAMES, RARITY, RARITY_MUL, EQ_FX, EQ_TJ, SLOTS,
   BAG_SIZE, PET_MAX, PARTY_MAX, MAX_LEVEL, LEVEL_CAPS, expNeed, PET_TRAIT_POOL, PET_RARE_POOL } from './data.js';
-import { playerStats, petStats, partnerStats, applyCult } from './stats.js';
+import { playerStats, petStats, partnerStats, applyCult, eqFxSum, eqTj } from './stats.js';
 import { mkUnit } from './battle-core.js';
-import { rand, randi, pick, shuffle } from './util.js';
+import { rand, randi, pick, shuffle, chance, weighted } from './util.js';
 
 export const SAVE_KEY = 'mhxy-q-save-v2';
 export const G = { S: null };
@@ -17,7 +17,7 @@ export function newGame(role, name) {
   const attr = { ...RACES[race].base };
   for (const k in attr) attr[k] += 1;
   const S = {
-    v: 2, name, role, school: null, level: 1, exp: 0, gold: 500, attr, free: 5,
+    v: 2, name, role, school: null, level: 1, exp: 0, gold: 3000, attr, free: 5,
     hp: 1, mp: 1, skills: {}, inv: [], equip: { weapon: null, helm: null, neck: null, armor: null, belt: null, boots: null },
     pets: [], petActive: -1, partners: [], party: [],
     map: 'jianye', x: 32, y: 27, dir: 'down',
@@ -29,6 +29,9 @@ export function newGame(role, name) {
   addItem('baozi', 5);
   addItem('zhenlu', 2);
   addItem('feixing', 2);
+  // 2.4 新手礼：开局就能体验开箱
+  addItem('shenbing', 1);
+  addItem('baoxiang', 3);
   const armor = makeEquip('armor', 0, null, 0);
   S.equip.armor = armor;
   S.equip.weapon = makeEquip('weapon', 0, ROLES[role].weapon, 0);
@@ -72,6 +75,10 @@ export function migrate(S) {
   S.unlocked ??= {};          // 驿站可直达的地图
   S.quests.event ??= null;    // 天降异象
   S.quests.chain ??= false;   // 连续任务
+  S.stat.qiyu ??= 0;          // 2.4：奇遇次数、开出的装备、神器
+  S.stat.opened ??= 0;
+  S.stat.shenqi ??= 0;
+  S.qiyuCd ??= 0;
   return S;
 }
 export const levelCap = (S = G.S) => Math.min(MAX_LEVEL, LEVEL_CAPS[S.breaks || 0] ?? MAX_LEVEL);
@@ -172,28 +179,46 @@ export function addEquip(eq) {
 
 // ---------- 装备 ----------
 const BONUS_AMT = { hp: t => 20 + t * 25, mp: t => 15 + t * 15, atk: t => 5 + t * 8, def: t => 4 + t * 6, spd: t => 2 + t * 3, mpow: t => 4 + t * 6 };
-export function rollRarity(bias = 0) {
-  const r = Math.random();
-  if (r < 0.02 + bias * 0.5) return 3;
-  if (r < 0.12 + bias) return 2;
-  if (r < 0.4 + bias) return 1;
-  return 0;
+// 品质权重：普通 46、精良 28、稀有 15、史诗 7.5、传说 2.8、神器 0.7；bias 越大，高品质权重成倍上升
+const RARITY_W = [46, 28, 15, 7.5, 2.8, 0.7];
+export function rollRarity(bias = 0, minR = 0) {
+  const k = 1 + bias * 2.4;
+  return weighted(RARITY_W.map((w, i) => [i, i < minR ? 0 : w * k ** i]));
+}
+const FX_IDS = Object.keys(EQ_FX);
+// 附加属性、特技、特效：品质越高越多。洗练时也调用它重新随机
+export function rollSpecial(eq) {
+  const r = eq.rarity || 0, tier = eq.tier;
+  const base = EQUIP_BASE[eq.slot](tier);
+  for (const k in eq.stats) if (!(k in base)) delete eq.stats[k];
+  const pool = shuffle(Object.keys(BONUS_AMT).filter(k => !(k in base)));
+  for (let i = 0; i < r && i < pool.length; i++) eq.stats[pool[i]] = Math.round(BONUS_AMT[pool[i]](tier) * rand(0.6, 1.2) * (1 + r * 0.12));
+  const nfx = r >= 5 ? randi(2, 3) : r === 4 ? randi(1, 2) : r === 3 ? (chance(0.25) ? 2 : 1) : r === 2 ? (chance(0.3) ? 1 : 0) : r === 1 ? (chance(0.06) ? 1 : 0) : 0;
+  eq.fx = [];
+  while (eq.fx.length < nfx) { const f = weighted(FX_IDS.filter(x => !eq.fx.includes(x)).map(x => [x, EQ_FX[x].w])); eq.fx.push(f); }
+  eq.tj = r && chance([0, 0.03, 0.12, 0.4, 0.75, 1][r]) ? pick(EQ_TJ) : null;
+  eq.req = eq.fx.includes('wujibie') ? 0 : Math.max(0, tier * 10 - (eq.fx.includes('jianyi') ? 5 : 0));
+  eq.price = Math.floor(70 * (tier + 1) ** 2 * (1 + r * 0.8 + r * r * 0.3));
+  return eq;
 }
 export function makeEquip(slot, tier, wtype, rarity = 0, plus = 0) {
   const base = EQUIP_BASE[slot](tier);
   const stats = {};
-  const jitter = rarity === 0 ? 1 : 0.95 + Math.random() * 0.25;
-  for (const k in base) stats[k] = Math.round(base[k] * jitter);
-  const pool = shuffle(Object.keys(BONUS_AMT).filter(k => !(k in base)));
-  for (let i = 0; i < rarity && i < pool.length; i++) stats[pool[i]] = Math.round(BONUS_AMT[pool[i]](tier) * rand(0.6, 1.2));
+  const mul = rarity === 0 ? 1 : RARITY_MUL[rarity] * (0.92 + Math.random() * 0.2);
+  for (const k in base) stats[k] = Math.round(base[k] * mul);
   const name = slot === 'weapon' ? WEAPON_NAMES[wtype][tier] : EQUIP_NAMES[slot][tier];
-  return { uid: nextUid(), slot, tier, wtype: slot === 'weapon' ? wtype : null, name, stats, rarity, plus, req: tier * 10, price: Math.floor(70 * (tier + 1) ** 2 * (1 + rarity * 0.6)) };
+  const eq = { uid: nextUid(), slot, tier, wtype: slot === 'weapon' ? wtype : null, name, stats, rarity, plus, req: tier * 10, fx: [], tj: null, price: 0 };
+  return rollSpecial(eq);
 }
-export function randomDrop(tier, bias = 0) {
-  const slot = pick(['weapon', 'helm', 'neck', 'armor', 'belt', 'boots']);
-  return makeEquip(slot, tier, ROLES[G.S.role].weapon, rollRarity(bias));
+// 野外、任务掉落的装备是「未鉴定」的，在背包里鉴定时才揭晓品质、特技与特效
+export function randomDrop(tier, bias = 0, minR = 0) {
+  const slot = pick(SLOTS.map(s => s[0]));
+  const eq = makeEquip(slot, tier, ROLES[G.S.role].weapon, rollRarity(bias, minR));
+  eq.unid = true;
+  return eq;
 }
 export function canEquip(eq) {
+  if (eq.unid) return '尚未鉴定';
   if (G.S.level < eq.req) return '等级不足';
   if (eq.slot === 'weapon' && eq.wtype !== ROLES[G.S.role].weapon) return '无法使用该类武器';
   return null;
@@ -281,7 +306,8 @@ export function allyUnits() {
   const role = ROLES[S.role];
   const me = mkUnit({
     side: 'ally', kind: 'player', name: S.name, level: S.level, hp: Math.max(1, S.hp), maxHp: st.maxHp, mp: S.mp, maxMp: st.maxMp,
-    atk: st.atk, def: st.def, spd: st.spd, mpow: st.mpow, resist: st.resist, skills: schoolActives(S.school, S.skills), traits: [],
+    atk: st.atk, def: st.def, spd: st.spd, mpow: st.mpow, resist: st.resist, efx: eqFxSum(S.equip),
+    skills: [...schoolActives(S.school, S.skills), ...eqTj(S.equip).map(id => ({ id, lv: S.level }))], traits: [],
     look: role.look, weapon: role.weapon, gender: role.gender, slot: 2, ai: S.school ? SCHOOLS[S.school].role : 'phys',
   });
   units.push(me);

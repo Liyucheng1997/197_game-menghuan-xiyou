@@ -121,7 +121,10 @@ function autoCommands() {
   if (canCommand(me)) {
     const last = G.S.lastCmd;
     let a = null;
-    if (last && last.type === 'skill' && canUse(me, last.skill).ok) {
+    // 自动战斗时，装备特技在队友倒地或残血时自动救场
+    const emergency = aiAction(BT.B, me);
+    if (emergency.type === 'skill' && SKILLS[emergency.skill]?.tj && ['revive', 'heal'].includes(SKILLS[emergency.skill].kind)) a = emergency;
+    else if (last && last.type === 'skill' && canUse(me, last.skill).ok) {
       const tt = targetType(last.skill);
       a = { type: 'skill', skill: last.skill };
       if (tt === 'enemy') a.target = randomFoe();
@@ -157,7 +160,8 @@ function command(c) {
       if (!list.length) { toast(G.S.school || who.kind === 'pet' ? '没有可用的法术' : '尚未拜师，没有法术'); return; }
       pop.innerHTML = '<div class="pop-title">法术</div>' + list.map(s => {
         const sk = SKILLS[s.id], ok = canUse(who, s.id);
-        return `<button data-s="${s.id}" ${ok.ok ? '' : 'disabled'} title="${esc(sk.desc)}"><b>${sk.name}</b><small>${ok.ok ? '魔法 ' + skillMp(s.id, s.lv) : ok.why}</small></button>`;
+        const left = sk.uses ? `剩${sk.uses - (who.used?.[s.id] || 0)}次 · ` : '';
+        return `<button data-s="${s.id}" class="${sk.tj ? 'tj' : ''}" ${ok.ok ? '' : 'disabled'} title="${esc(sk.desc)}"><b>${sk.tj ? '✦' : ''}${sk.name}</b><small>${ok.ok ? left + '魔法 ' + skillMp(s.id, s.lv) : ok.why}</small></button>`;
       }).join('') + '<button class="pop-x">返回</button>';
       pop.classList.remove('hidden');
       pop.querySelector('.pop-x').onclick = () => pop.classList.add('hidden');

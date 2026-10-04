@@ -4,10 +4,12 @@ import { G, save, gainExp, petGainExp, addItem, removeItem, countItem, addEquip,
 import { STORY2, BOSS_FIGHTS2 } from './story2.js';
 import * as Act from './activity.js';
 import * as Mall from './mall.js';
+import * as Loot from './loot.js';
+import * as Qiyu from './qiyu.js';
 import { enemyUnit, layoutEnemies } from './enemies.js';
 import { getMap, MAP_IDS, MAP_NAMES, WORLD_ORDER, randomWalkable } from './maps.js';
 import { NPCS } from './npcs.js';
-import { petStats } from './stats.js';
+import { petStats, eqFxSum } from './stats.js';
 import { W, enterMap, navigate, transition, snapshot } from './world.js';
 import { BT, startBattle } from './battle.js';
 import { dialog, toast, log, banner, confirmBox } from './ui.js';
@@ -155,7 +157,7 @@ export async function giveReward(r, source) {
   const S = G.S;
   const out = [];
   if (r.expF) { const e = grantExp(Math.floor(expNeed(S.level) * r.expF)).gained; out.push(`经验 +${fmt(e)}`); }
-  if (r.gold) { S.gold += r.gold; out.push(`银两 +${fmt(r.gold)}`); Audio2.sfx('coin'); }
+  if (r.gold) { const g = r.gold * 3; S.gold += g; out.push(`银两 +${fmt(g)}`); Audio2.sfx('coin'); }
   if (r.jade) { Mall.addJade(r.jade); out.push(`<span style="color:#ff7ad8">仙玉 +${r.jade}</span>`); }
   for (const [id, n] of r.items || []) { addItem(id, n); out.push(`${ITEMS[id].name} ×${n}`); }
   if (r.equip) { const eq = makeEquip(r.equip.slot, r.equip.tier, ROLES[S.role].weapon, r.equip.rarity || 0); if (addEquip(eq)) out.push(eq.name); }
@@ -169,7 +171,9 @@ export async function giveReward(r, source) {
 }
 
 // 经验加成：双倍经验丹、VIP
-export function expMul() { return (G.S.doubleMs > 0 ? 2 : 1) * (1 + Mall.vipPerk('exp')); }
+export function expMul() { return (G.S.doubleMs > 0 ? 2 : 1) * (1 + Mall.vipPerk('exp') + (eqFxSum(G.S.equip).fuyuan || 0)); }
+// 银两加成：VIP、装备特效「聚宝」
+export function goldMul() { return 1 + Mall.vipPerk('gold') + (eqFxSum(G.S.equip).jubao || 0); }
 let capToastAt = 0;
 export function grantExp(e) {
   const before = G.S.level;
@@ -278,10 +282,10 @@ function services(id) {
     case 'jy_inn': list.push({ label: '住店休息（50两）', fn: () => rest(50) }); break;
     case 'ca_inn': list.push({ label: Mall.vipLevel() >= 4 ? '住店休息（VIP免费）' : '住店休息（100两）', fn: () => rest(Mall.vipLevel() >= 4 ? 0 : 100) }); break;
     case 'jy_grocer': shop('购买物品', { items: ['baozi', 'kaoya', 'zhenlu', 'sheyao', 'feixing'] }); break;
-    case 'jy_weapon': shop('购买装备', { equip: ['weapon', 'armor', 'helm'], tiers: [0, 1] }); break;
-    case 'ca_weapon': shop('购买武器', { equip: ['weapon'], tiers: shopTiers() }); list.push({ label: '装备强化', fn: () => P.forgePanel() }); break;
-    case 'ca_armor': shop('购买服饰', { equip: ['armor', 'helm'], tiers: shopTiers() }); break;
-    case 'ca_acc': shop('购买饰品', { equip: ['neck', 'belt', 'boots'], tiers: shopTiers() }); break;
+    case 'jy_weapon': list.push({ label: '打造装备（开出极品）', cls: 'primary', fn: () => Loot.craftPanel() }); shop('购买装备', { equip: ['weapon', 'armor', 'helm'], tiers: [0, 1] }); break;
+    case 'ca_weapon': list.push({ label: '打造装备（开出极品）', cls: 'primary', fn: () => Loot.craftPanel() }); shop('购买武器', { equip: ['weapon'], tiers: shopTiers() }); list.push({ label: '装备强化 / 洗练', fn: () => P.forgePanel() }); break;
+    case 'ca_armor': list.push({ label: '打造装备（开出极品）', cls: 'primary', fn: () => Loot.craftPanel() }); shop('购买服饰', { equip: ['armor', 'helm'], tiers: shopTiers() }); break;
+    case 'ca_acc': list.push({ label: '打造装备（开出极品）', cls: 'primary', fn: () => Loot.craftPanel() }); shop('购买饰品', { equip: ['neck', 'belt', 'boots'], tiers: shopTiers() }); break;
     case 'ca_drug': shop('购买药品', { items: DRUG_SHOP }); break;
     case 'ca_grocer': shop('购买杂货', { items: GROCERY_SHOP }); break;
     case 'jw_merchant': shop('购买补给', { items: ['kaoya', 'jinchuang', 'dahuan', 'nverhong', 'xianniang', 'sheli', 'feixing', 'sheyao'] }); break;
@@ -412,16 +416,16 @@ function finishShimen(inBattle) {
   S.stat.shimen++;
   const round = ((n - 1) % 10) + 1;
   const L = S.level;
-  const gold = Math.floor((40 + L * 10 + round * 15) * (1 + Mall.vipPerk('gold')));
+  const gold = Math.floor((200 + L * 40 + round * 60) * goldMul());
   S.quests.school = null;
   S.gold += gold;
   const exp = grantExp(Math.floor(expNeed(L) * (0.07 + round * 0.007))).gained;
   const pet = activePet(); if (pet) petGainExp(pet, exp * 0.6);
   let extra = '';
   if (round === 10) {
-    const eq = randomDrop(tierForLevel(L), 0.15);
-    if (addEquip(eq)) extra = `，额外奖励 ${eq.name}`;
-    addItem('xiulian', 1); extra += '，修炼果×1';
+    const eq = randomDrop(tierForLevel(L), 0.25);
+    if (addEquip(eq)) extra = '，额外奖励 未鉴定装备';
+    addItem('xiulian', 1); addItem('baoxiang', 1); extra += '，修炼果×1，神秘宝箱×1';
   }
   Audio2.sfx('quest');
   banner(`师门任务完成（第${round}环）`, `经验+${fmt(exp)} 银两+${gold}${extra}`);
@@ -484,13 +488,13 @@ function fightGhost() {
       const c = ++S.quests.ghostCount;
       S.stat.ghost++;
       const round = ((c - 1) % 10) + 1;
-      const gold = Math.floor((L * 25 + round * 40) * (1 + Mall.vipPerk('gold')));
+      const gold = Math.floor((L * 100 + round * 150) * goldMul());
       S.gold += gold;
       const exp = grantExp(Math.floor(expNeed(L) * 0.09 * (1 + round * 0.06))).gained;
       const pet = activePet(); if (pet) petGainExp(pet, exp * 0.6);
       S.quests.ghost = null;
       let extra = '';
-      if (round === 10) { const eq = randomDrop(tierForLevel(L), 0.2); if (addEquip(eq)) extra = `，钟馗赏赐 ${eq.name}`; addItem('jinke', 1); extra += '，金柳露×1'; }
+      if (round === 10) { const eq = randomDrop(tierForLevel(L), 0.3); if (addEquip(eq)) extra = '，钟馗赏赐 未鉴定装备'; addItem('jinke', 1); addItem('baoxiang', 1); extra += '，金柳露×1，神秘宝箱×1'; }
       banner(`收服${gq.name}（第${round}只）`, `经验+${fmt(exp)} 银两+${gold}${extra}`);
       log(`【抓鬼】第${round}只完成：经验+${fmt(exp)}，银两+${gold}${extra}`, '#d8a8ff');
       if (S.quests.chain) R.afterBattle = () => { if (S.quests.ghost) return; giveGhost(true); const g2 = S.quests.ghost; navigate({ map: g2.map, npc: 'ghost' }); };
@@ -554,18 +558,21 @@ export async function digTreasure(index) {
     toast('挖出了一群妖怪！');
     const m = getMap(fieldMapFor(L));
     const enemies = Array.from({ length: teamSize() + 1 }, () => enemyUnit(pick(m.encounter.mobs), L, { name: undefined }));
-    fight(enemies, { onWin: () => { const eq = randomDrop(tierForLevel(L), 0.2); addEquip(eq); return `妖怪守护的宝物：${eq.name}`; } });
+    fight(enemies, { onWin: () => { addItem('shenbing', 1); return '妖怪守护的宝物：神兵宝匣×1'; } });
     return;
   }
   let msg;
-  if (r < 0.5) { const g = L * 60 + randi(100, 500); S.gold += g; msg = `挖到了 ${g} 两银子！`; Audio2.sfx('coin'); }
-  else if (r < 0.75) { const eq = randomDrop(tierForLevel(L), 0.12); addEquip(eq); msg = `挖到了装备「${eq.name}」！`; }
-  else if (r < 0.95) { const id = pick(['jinchuang', 'nverhong', 'sheli', 'xiulian', 'jinke', 'wanyao']); addItem(id, 1); msg = `挖到了${ITEMS[id].name}！`; }
-  else { const g = L * 300; S.gold += g; addItem('xiulian', 2); msg = `鸿运当头！挖到了 ${g} 两银子和两个修炼果！`; Audio2.sfx('levelup'); }
+  if (r < 0.45) { const g = L * 250 + randi(500, 2000); S.gold += g; msg = `挖到了 ${fmt(g)} 两银子！`; Audio2.sfx('coin'); }
+  else if (r < 0.7) { addItem('baoxiang', 1); msg = '挖到了一个神秘宝箱！'; }
+  else if (r < 0.9) { const id = pick(['jinchuang', 'nverhong', 'sheli', 'xiulian', 'jinke', 'wanyao', 'lingxi']); addItem(id, 1); msg = `挖到了${ITEMS[id].name}！`; }
+  else { const g = L * 1200; S.gold += g; addItem('xiulian', 2); addItem('shenbing', 1); msg = `鸿运当头！挖到了 ${fmt(g)} 两银子、两个修炼果和一个神兵宝匣！`; Audio2.sfx('levelup'); }
   banner('挖宝', msg);
   log('【宝图】' + msg, '#ffb060');
   P.refreshHud(); save();
 }
+
+// ---------------- 奇遇 ----------------
+export function checkQiyu(map) { return Qiyu.check(map); }
 
 // ---------------- 遇敌与战斗 ----------------
 export const teamSize = () => 1 + G.S.party.length;
@@ -661,21 +668,26 @@ function onBattleEnd(result, B, opts) {
     let exp = 0, gold = 0;
     const drops = [];
     const q = mq(), st = mainStep();
+    const xb = 1 + (eqFxSum(S.equip).xunbao || 0);
     if (opts.boss) S.stat.bosses++;
     for (const u of B.units) {
       if (u.side !== 'enemy' || u.gone) continue;
       let e = monsterExp(u.level) * (u.boss ? 4 : u.leader ? 2 : 1);
       if (u.level < S.level - 10) e *= 0.3;
       exp += e;
-      gold += Math.floor(u.level * 3 + 5 + Math.random() * u.level * 2) * (u.boss ? 5 : 1);
+      gold += Math.floor(u.level * 12 + 20 + Math.random() * u.level * 8) * (u.boss ? 5 : 1);
       S.kills++;
       if (st && q.state === 'active' && st.goal.type === 'kill' && u.mid === st.goal.mid) q.progress++;
       const m = MONSTERS[u.mid] || {};
       for (const [id, p] of m.drops || []) if (chance(p)) { if (addItem(id, 1)) drops.push(ITEMS[id].name); }
-      if (chance(u.boss ? 1 : 0.035)) { const eq = randomDrop(tierForLevel(u.level), u.boss ? 0.25 : 0); if (addEquip(eq)) drops.push(`<span style="color:${['#fff', '#6fe07a', '#5ab8ff', '#d68aff'][eq.rarity]}">${eq.name}</span>`); }
+      if (chance(u.boss ? 1 : 0.06 * xb)) { const eq = randomDrop(tierForLevel(u.level), u.boss ? 0.3 : 0.05); if (addEquip(eq)) drops.push('<span class="drop-unid">未鉴定装备</span>'); }
+      if (chance(u.boss ? 0.5 : 0.012 * xb)) { if (addItem('baoxiang', 1)) drops.push('<span class="drop-box">🎁神秘宝箱</span>'); }
     }
     exp = Math.floor(exp);
-    gold = Math.floor(gold * (1 + Mall.vipPerk('gold')));
+    gold = Math.floor(gold * goldMul());
+    // 财运亨通：偶尔银两暴击
+    let lucky = 0;
+    if (!opts.boss && chance(0.05)) { lucky = randi(5, 10); gold *= lucky; Audio2.sfx('coin'); }
     S.gold += gold;
     const before = S.level;
     const petExp = exp;
@@ -683,7 +695,7 @@ function onBattleEnd(result, B, opts) {
     const pet = activePet();
     let petLv = 0;
     if (pet) petLv = petGainExp(pet, petExp * (G.S.doubleMs > 0 ? 2 : 1));
-    lines.push(`<div class="res-row">经验 <b>+${fmt(exp)}</b>${G.S.doubleMs > 0 ? ' <span class="dbl">双倍</span>' : ''}</div>`, `<div class="res-row">银两 <b>+${gold}</b></div>`);
+    lines.push(`<div class="res-row">经验 <b>+${fmt(exp)}</b>${G.S.doubleMs > 0 ? ' <span class="dbl">双倍</span>' : ''}</div>`, `<div class="res-row">银两 <b>+${fmt(gold)}</b>${lucky ? ` <span class="lucky">财运亨通 ×${lucky}</span>` : ''}</div>`);
     if (pet) lines.push(`<div class="res-row">${esc(pet.name)} 经验 +${fmt(exp)}${petLv ? `，升到 ${pet.level} 级！` : ''}</div>`);
     if (drops.length) lines.push(`<div class="res-row">获得：${drops.join('、')}</div>`);
     if (S.level > before) lines.push(`<div class="res-lv">升级！当前等级 ${S.level}</div>`);
@@ -701,7 +713,7 @@ function onBattleEnd(result, B, opts) {
     };
   } else if (result === 'lose') {
     opts.onLose?.();
-    const lost = Math.floor(S.gold * 0.1);
+    const lost = Math.floor(S.gold * 0.05);
     S.gold -= lost;
     lines.push(`<div class="res-row">你被打败了……损失银两 ${lost}</div>`, '<div class="res-row">醒来时已在客栈，气血恢复了一半。</div>');
     R.afterLose = () => {
@@ -758,6 +770,7 @@ export async function useItem(index, target = 'player') {
     case 'double': removeItem(e.id, 1); S.doubleMs += 60 * 60 * 1000; banner('双倍经验', `剩余 ${Math.round(S.doubleMs / 60000)} 分钟`); Audio2.sfx('levelup'); break;
     case 'expbook': { removeItem(e.id, 1); const g2 = grantExp(Math.floor(expNeed(S.level) * 0.3)).gained; toast(`获得经验 ${fmt(g2)}`); break; }
     case 'mat': toast(it.desc); return;
+    case 'box': await Loot.openBox(e.id); break;
   }
   P.refreshHud(); save();
 }
